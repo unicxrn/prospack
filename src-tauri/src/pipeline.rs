@@ -270,7 +270,17 @@ impl Queue {
             if !matches!(j.status, JobStatus::Failed | JobStatus::Cancelled | JobStatus::Ready) {
                 return Err("Nothing to resume".to_string());
             }
-            let from = j.stages.iter().position(|s| s.state != StageState::Done).unwrap_or(STAGES.len());
+            let mut from = j.stages.iter().position(|s| s.state != StageState::Done).unwrap_or(STAGES.len());
+            // A failed verify means the image is bad: rebuild it rather than re-checking the same file.
+            if j.status == JobStatus::Failed && from == 1 {
+                if let Some(p) = j.image_path.take() {
+                    if std::fs::remove_file(&p).is_ok() {
+                        j.log("warn", format!("Deleted the image that failed verification: {p}"));
+                    }
+                }
+                j.image_bytes = None;
+                from = 0;
+            }
             // Without the local image there is nothing to verify or upload.
             let from = if from > 0 && !j.image_path.as_ref().is_some_and(|p| Path::new(p).is_file()) { 0 } else { from };
             j.resume_from = from;
@@ -919,6 +929,25 @@ mod e2e {
         assert_eq!(j3.stage, 1, "must stop at verify");
         assert!(j3.mismatches > 0);
         assert!(!remote.exists(), "a failed image must not be uploaded");
+
+        // "Compress again" deletes the bad image, rebuilds, verifies and uploads.
+        q.resume(id3).unwrap();
+        let j4 = wait_until(&q, id3, 300);
+        assert_eq!(j4.status, JobStatus::Done, "error: {:?}", j4.error);
+        assert!(j4.log.iter().any(|l| l.text.contains("Deleted the image that failed verification")));
+
+        // An interrupted upload resumes from the partial file instead of starting over.
+        q.remove(id3).unwrap();
+        let good = std::fs::read(j4.image_path.as_ref().unwrap()).unwrap();
+        std::fs::remove_file(&remote).unwrap();
+        let part = ps5_root.join("data/homebrew/.PPSA00001.ffpfsc.packer-part");
+        std::fs::write(&part, &good[..good.len() / 2]).unwrap();
+        let id5 = q.add(crate::dump::inspect(&dump).unwrap()).unwrap();
+        let j5 = wait_until(&q, id5, 300);
+        assert_eq!(j5.status, JobStatus::Done, "error: {:?}", j5.error);
+        assert!(j5.log.iter().any(|l| l.text.starts_with("Resuming at")), "should resume");
+        assert_eq!(std::fs::read(&remote).unwrap(), good, "resumed upload must be byte-identical");
+        assert!(!part.exists());
 
         server.kill().ok();
     }

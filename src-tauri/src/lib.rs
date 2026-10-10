@@ -102,8 +102,8 @@ fn resume_job(app: State<'_, App>, id: u64) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn ps5_status() -> Result<ps5::Ps5Status, String> {
-    blocking(|| ps5::status(&settings::load())).await
+async fn ps5_status(value: Option<settings::Settings>) -> Result<ps5::Ps5Status, String> {
+    blocking(move || ps5::status(&value.unwrap_or_else(settings::load))).await
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

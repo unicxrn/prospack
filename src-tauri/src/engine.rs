@@ -412,3 +412,51 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod cancel_test {
+    use super::*;
+
+    /// PACKER_E2E_SCRATCH=<dir with mkvenv> cargo test cancel -- --ignored
+    #[test]
+    #[ignore]
+    fn cancel_kills_mkpfs_promptly() {
+        let scratch = PathBuf::from(std::env::var("PACKER_E2E_SCRATCH").unwrap());
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().join("engine");
+        std::fs::create_dir_all(&root).unwrap();
+        std::os::unix::fs::symlink(scratch.join("mkvenv"), root.join("venv")).unwrap();
+        let src = tmp.path().join("PPSA00002-app");
+        std::fs::create_dir_all(src.join("sce_sys")).unwrap();
+        std::fs::write(src.join("sce_sys/param.json"), r#"{"titleId":"PPSA00002"}"#).unwrap();
+        // 3 GB of compressible data: long enough to cancel mid-way.
+        let chunk = vec![b'x'; 64 << 20];
+        let mut f = std::fs::File::create(src.join("big.bin")).unwrap();
+        for _ in 0..48 {
+            std::io::Write::write_all(&mut f, &chunk).unwrap();
+        }
+        drop(f);
+        let out_dir = tmp.path().join("out");
+        std::fs::create_dir_all(&out_dir).unwrap();
+        let engine = Engine { root };
+        let cancel = Arc::new(AtomicBool::new(false));
+        let c2 = cancel.clone();
+        let t = std::time::Instant::now();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(1500));
+            c2.store(true, Ordering::Relaxed);
+        });
+        let mut saw_progress = false;
+        let res = engine.pack(&src, &out_dir.join("PPSA00002.ffpfsc"), 7, 0, &cancel, &mut |ev| {
+            if matches!(ev, PackEvent::Progress { .. }) {
+                saw_progress = true;
+            }
+        });
+        assert_eq!(res, Err("Cancelled".into()));
+        assert!(t.elapsed().as_secs() < 8, "cancel took {:?}", t.elapsed());
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        let left = Command::new("pgrep").args(["-f", src.to_str().unwrap()]).output().unwrap();
+        assert!(left.stdout.is_empty(), "mkpfs still running: {}", String::from_utf8_lossy(&left.stdout));
+        eprintln!("progress seen: {saw_progress}, cancelled after {:?}", t.elapsed());
+    }
+}
