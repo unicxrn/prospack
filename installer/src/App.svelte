@@ -90,10 +90,10 @@
             {/if}
           </p>
           <div class="feat">
-            <div><b>Often 40–60% smaller</b>Compressed on your PC</div>
+            <div><b>Often 40 to 60% smaller</b>Compressed on your PC</div>
             <div><b>Verified</b>File by file, before upload</div>
             <div><b>One file</b>Fast, resumable FTP</div>
-            <div><b>No Python</b>Everything included</div>
+            <div><b>Nothing else to install</b>Python and MkPFS are built in</div>
           </div>
           <footer>
             <span class="fine mono">GPL-3.0 · github.com/unicxrn/prospack</span>
@@ -102,7 +102,7 @@
         {:else if screen === "options"}
           <div class="kicker">Options</div>
           <h1>Where should Prospack go?</h1>
-          <p>Installs for your user only. No admin prompt needed.</p>
+          <p>Prospack installs for your Windows user only, so it won't ask for admin rights.</p>
           <div class="field">
             <span class="mono path" title={dir}>{dir}</span>
             <button class="link" onclick={browse}>Change</button>

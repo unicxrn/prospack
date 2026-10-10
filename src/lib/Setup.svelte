@@ -111,7 +111,7 @@
               and sends it to your PS5, where ShadowMountPlus mounts it.
             </p>
             <div class="tiles">
-              <div><b>Compress</b><span>On your PC, often 40–60% smaller</span></div>
+              <div><b>Compress</b><span>On your PC, often 40 to 60% smaller</span></div>
               <div><b>Verify</b><span>Every file checked against the dump</span></div>
               <div><b>Upload</b><span>One file over FTP, resumable</span></div>
               <div><b>Mount</b><span>Shows up on the PS5</span></div>
@@ -185,25 +185,25 @@
               <span class="mono path" title={draft.outputDir}>{draft.outputDir}</span>
               <button class="link" onclick={browse}>Change</button>
             </div>
-            <div class="freeline"><span>Free on that drive</span><b class="num">{free != null ? gb(free) : "—"}</b></div>
+            <div class="freeline"><span>Free on that drive</span><b class="num">{free != null ? gb(free) : "unknown"}</b></div>
             <div class="kicker sub">After a game is on the PS5</div>
             <div class="choice">
               <label class:sel={!draft.deleteLocalAfterUpload}>
                 <input type="radio" name="keep" checked={!draft.deleteLocalAfterUpload} onchange={() => (draft.deleteLocalAfterUpload = false)} />
-                <span><b>Keep the image on this PC</b><small>Recommended while you're testing. Re-sending is instant.</small></span>
+                <span><b>Keep the image on this PC</b><small>Recommended while you're testing, so you can send a game again without compressing it again.</small></span>
               </label>
               <label class:sel={draft.deleteLocalAfterUpload}>
                 <input type="radio" name="keep" checked={draft.deleteLocalAfterUpload} onchange={() => (draft.deleteLocalAfterUpload = true)} />
-                <span><b>Delete it once the PS5 confirms the game mounted</b><small>Saves space. The original dump is never touched either way.</small></span>
+                <span><b>Delete it once the PS5 confirms the game mounted</b><small>Saves space on this PC. Your dump folder stays as it is either way.</small></span>
               </label>
             </div>
           {:else}
             <h1>Drop in your first game</h1>
             <ul class="tips">
-              <li><b>Drag a dump folder</b> onto the window, or press <kbd>Ctrl O</kbd>.</li>
-              <li><b>Leave it running.</b> Each game compresses, verifies, uploads and mounts on its own. Queue as many as you like.</li>
-              <li><b>Nothing is deleted.</b> Your dump is only read, and Prospack never overwrites files on the PS5.</li>
-              <li><b>Stuck?</b> The <kbd>?</kbd> button explains every screen and the common problems.</li>
+              <li>Drag a dump folder onto the window, or press <kbd>Ctrl O</kbd> to pick one.</li>
+              <li>You can queue several games and leave Prospack to it. Each one compresses, verifies, uploads and mounts in turn.</li>
+              <li>Prospack only reads your dump, and it won't overwrite anything that's already on the PS5.</li>
+              <li>If something goes wrong, the <kbd>?</kbd> button explains each screen and the usual fixes.</li>
             </ul>
           {/if}
         </div>

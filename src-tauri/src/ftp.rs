@@ -1,4 +1,4 @@
-//! A small, blocking FTP client: just what talking to the PS5's FTP server needs.
+//! A small, blocking FTP client covering what the PS5's FTP server needs.
 //! Passive mode, binary transfers, resumable uploads.
 
 use std::io::{BufRead, BufReader, Read, Write};

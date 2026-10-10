@@ -91,19 +91,19 @@
     <section>
       <div class="kicker">What it changes</div>
       <ul class="plain">
-        <li><b>Your dump</b> is only read. The one exception: APR Emu games without an <code>ampr_emu.index</code> get one, which the game needs.</li>
-        <li><b>On this PC:</b> the image, in your image folder.</li>
-        <li><b>On the PS5:</b> the image, plus <code>autotune.ini</code>, <code>config.ini</code> and <code>manual.lst</code> in <code>/data/shadowmount</code>. If Game Compressor is installed, also its record, so it shows the game as validated. Every PS5 file is backed up on this PC before it's changed.</li>
+        <li>Prospack only reads your dump folder. The exception is an APR Emu game without an <code>ampr_emu.index</code>: MkPFS adds one, because the game needs it.</li>
+        <li>On this PC it writes the image to your image folder.</li>
+        <li>On the PS5 it writes the image, and updates <code>autotune.ini</code>, <code>config.ini</code> and <code>manual.lst</code> in <code>/data/shadowmount</code>. If Game Compressor is installed, it also writes Game Compressor's record so the game shows as validated there. Each PS5 file is backed up on this PC before it's changed.</li>
       </ul>
     </section>
 
     <section>
       <div class="kicker">Using Prospack</div>
       <ul class="plain">
-        <li><b>Add games</b> by dropping dump folders on the window, with <kbd>Ctrl O</kbd>, or by passing folders on the command line. They're done one at a time.</li>
-        <li><b>Cancel</b> stops the current step. <b>Resume</b> continues from where it stopped, including half-finished uploads.</li>
-        <li><b>Check again</b> re-checks the mount if ShadowMountPlus was slow.</li>
-        <li><b>Show image</b> opens the image folder. Settings: <kbd>Ctrl ,</kbd> · Help: <kbd>F1</kbd></li>
+        <li>Add games by dropping dump folders on the window, with <kbd>Ctrl O</kbd>, or by passing folders on the command line. Prospack works through them one at a time.</li>
+        <li>Cancel stops the current step. Resume picks up where it stopped, including a half-finished upload.</li>
+        <li>Check again looks for the mount once more when ShadowMountPlus was slow.</li>
+        <li>Show image opens the image folder. <kbd>Ctrl ,</kbd> opens Settings and <kbd>F1</kbd> opens this panel.</li>
       </ul>
       <button class="btn" onclick={onRerunSetup}>Run setup again</button>
     </section>

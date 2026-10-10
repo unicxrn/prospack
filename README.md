@@ -1,144 +1,147 @@
-<p align="center">
-  <img src="src-tauri/icons/128x128@2x.png" width="96" alt="">
-</p>
+<div align="center">
 
-<h1 align="center">Prospack</h1>
+<img src="src-tauri/icons/128x128@2x.png" width="104" alt="Prospack icon">
 
-<p align="center"><b>Pack, verify and send PS5 dumps as <code>.ffpfsc</code>, from your PC.</b></p>
+# Prospack
 
-<p align="center">
-  <a href="https://github.com/unicxrn/prospack/releases/latest">Download</a> ·
-  <a href="#quick-start">Quick start</a> ·
-  <a href="#troubleshooting">Troubleshooting</a>
-</p>
+Pack, verify and send PS5 game dumps as `.ffpfsc`, from your PC.
 
-![Prospack](docs/screenshot.png)
+[![Release](https://img.shields.io/github/v/release/unicxrn/prospack?style=flat-square&color=9b7bff&label=release)](https://github.com/unicxrn/prospack/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/unicxrn/prospack/total?style=flat-square&color=3a3a40)](https://github.com/unicxrn/prospack/releases)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-3a3a40?style=flat-square)](#download)
+[![License](https://img.shields.io/github/license/unicxrn/prospack?style=flat-square&color=3a3a40)](LICENSE)
 
-Prospack turns a PS5 game dump into a single compressed `.ffpfsc` image on your PC, checks
-every file in it against the dump, uploads it to your PS5 over FTP, and gets
-ShadowMountPlus to mount it.
+<img src="docs/screenshot.png" alt="Prospack compressing a game" width="860">
 
-It does the same job as compressing with Game Compressor on the console, but your PC does
-the heavy lifting:
-- **Faster.** Compression runs at hundreds of MB/s on a desktop CPU.
-- **Less to send.** One file, usually 40–60% smaller, instead of tens of thousands of loose
-  files over FTP.
-- **Checked before it leaves your PC.** A bad image never reaches the console.
+</div>
+
+Prospack takes a PS5 game dump, compresses it into a single `.ffpfsc` image on your PC,
+checks every file in that image against the original, uploads it to your PS5 and gets
+ShadowMountPlus to mount it. It's the same kind of image Game Compressor makes on the
+console, built on your PC's CPU instead, so it's a lot quicker. You also send one file
+that's usually 40 to 60% smaller than the dump, instead of tens of thousands of loose ones.
 
 ## Download
 
-| Platform | Get |
+| Platform | Download |
 | --- | --- |
-| **Windows 10/11** | `Prospack-Setup-<version>.exe` from [Releases](https://github.com/unicxrn/prospack/releases/latest) |
-| **Linux** | `.AppImage` (any distro) or `.deb` (Debian/Ubuntu) from [Releases](https://github.com/unicxrn/prospack/releases/latest) |
+| **Windows 10 and 11** | [`Prospack-Setup.exe`](https://github.com/unicxrn/prospack/releases/latest) |
+| **Linux** | [`.AppImage`](https://github.com/unicxrn/prospack/releases/latest) for any distro, or the `.deb` for Debian and Ubuntu |
 
-Everything is included. You don't need Python or anything else.
+Python and MkPFS are built in, so there's nothing else to install. Prospack checks for new
+versions when it starts and can update itself.
 
-> **Windows shows "Windows protected your PC"?** The installer isn't code-signed, so
-> SmartScreen warns about it. Click **More info → Run anyway**. You can check the
-> download against the SHA-256 on the release page.
+The Windows installer isn't code-signed, so SmartScreen may say "Windows protected your
+PC". Click **More info**, then **Run anyway**. The checksums for every download are on the
+release page if you want to verify it first.
 
-## You'll need
+## What you need
 
-- A **jailbroken PS5** running an **FTP server**: ftpsrv (port 2121) or etaHEN (port 1337).
-- **ShadowMountPlus** running on the PS5, so the game shows up.
-- A **game dump folder**: the one containing `sce_sys/` and `eboot.bin`, such as `PPSA01234-app`.
-- Room on your PC for the image while it's made, up to the size of the dump.
+- A jailbroken PS5 with an FTP server running: ftpsrv (port 2121) or etaHEN (port 1337).
+- ShadowMountPlus running on the PS5.
+- A game dump: the folder with `sce_sys/` and `eboot.bin` in it, like `PPSA01234-app`.
+- Enough free space on your PC for the image while it's being written. It can need up to
+  the size of the dump.
 
-## Quick start
+## Using it
 
-1. Open Prospack. Setup finds your PS5 on the network and checks that ShadowMountPlus is there.
-2. Pick where images are kept on your PC.
-3. Drop a dump folder on the window, or press **Ctrl O**.
-4. Leave it running. Each game goes through four steps on its own:
+The first time you open Prospack, setup scans your network for the PS5, checks that
+ShadowMountPlus is there, and asks where to keep images. After that, drag a dump folder
+onto the window (or press <kbd>Ctrl</kbd>+<kbd>O</kbd>) and leave it running. Each game
+goes through four steps:
 
 | Step | What happens |
 | --- | --- |
-| **Compress** | [MkPFS](https://github.com/PSBrew/MkPFS) packs the dump into `<TITLE>.ffpfsc`: an exFAT image inside a compressed PFS container, the same format Game Compressor makes. |
-| **Verify** | Every file is read back out of the image and compared with the dump, byte for byte. If anything differs, the job stops before uploading. |
-| **Upload** | One file to `/data/homebrew` under a hidden name until it's complete, then renamed. It resumes if interrupted and never overwrites an existing image. |
-| **Mount** | ShadowMountPlus is told about the image and Prospack waits until it's mounted. |
+| **Compress** | [MkPFS](https://github.com/PSBrew/MkPFS) packs the dump into `<TITLE>.ffpfsc`: an exFAT image inside a compressed PFS container. |
+| **Verify** | Every file is read back out of the image and compared with the dump, byte for byte. If anything differs, the job stops before it uploads. |
+| **Upload** | The image goes to `/data/homebrew` under a hidden name and is renamed once it's complete. Interrupted uploads resume, and Prospack won't overwrite an image that's already there. |
+| **Mount** | Prospack registers the image with ShadowMountPlus and waits for the game to appear. |
 
-You can queue as many games as you like. The **?** button inside the app explains every
-screen.
+You can queue as many games as you like. The <kbd>?</kbd> button in the app explains every
+screen and walks through the common problems.
 
-## What Prospack changes
+<details>
+<summary><b>What Prospack changes on your PS5</b></summary>
+<br>
 
-- **Your dump folder** is only read. The one exception is APR Emu games without an
-  `ampr_emu.index`: MkPFS adds one to the folder, because the game needs it.
-- **On your PC:** the `.ffpfsc` image goes in your image folder. You can have it deleted
-  automatically once the PS5 confirms the mount.
-- **On your PS5:**
-  - `/data/homebrew/<TITLE>.ffpfsc`: the image.
-  - `/data/shadowmount/autotune.ini`: `image_sector=<TITLE>.ffpfsc:65536`.
-  - `/data/shadowmount/config.ini`: `image_ro=<TITLE>.exfat`.
-  - `/data/shadowmount/manual.lst`: the image path. Rewriting this file makes
-    ShadowMountPlus scan for it.
-  - `/data/GameCompressor/validations/<TITLE>-<hash>.json`: only if you use Game
-    Compressor. It makes Game Compressor show the game as validated, along with its
-    original size and space saved.
+It writes the same settings Game Compressor writes for its own images, and backs up every
+file on your PC before changing it:
 
-  These are the same settings Game Compressor writes for its own images. Every file is
-  backed up on your PC before it's changed.
+| File | Change |
+| --- | --- |
+| `/data/homebrew/<TITLE>.ffpfsc` | The image |
+| `/data/shadowmount/autotune.ini` | `image_sector=<TITLE>.ffpfsc:65536` |
+| `/data/shadowmount/config.ini` | `image_ro=<TITLE>.exfat` |
+| `/data/shadowmount/manual.lst` | The image path. Rewriting this file is what makes ShadowMountPlus scan for it. |
+| `/data/GameCompressor/validations/` | A record that makes Game Compressor show the game as validated, with the space saved. Only if Game Compressor is installed. |
 
-## Troubleshooting
+Your dump folder is only read. The one exception is an APR Emu game that has no
+`ampr_emu.index`: MkPFS adds one, because the game needs it.
 
-<details><summary><b>Prospack can't find my PS5</b></summary>
-
-- Check the PS5 is on, jailbroken, and running an FTP server (ftpsrv on 2121 or etaHEN on 1337).
-- The PC and the PS5 must be on the same network. Guest Wi-Fi and VPNs often separate them.
-- Enter the IP yourself: **Settings → Run setup again → "Not listed? Enter it yourself"**.
-  The PS5 shows its IP under Settings → Network.
 </details>
 
-<details><summary><b>Verify failed</b></summary>
+<details>
+<summary><b>Troubleshooting</b></summary>
+<br>
 
-The image didn't match the dump, so nothing was uploaded. Choose **Compress again**. If it
-keeps failing, the dump itself may be incomplete or on a failing drive: copy it again.
+#### Prospack can't find my PS5
+
+Check the PS5 is on and running its FTP server, and that
+the PC is on the same network. Guest Wi-Fi and VPNs often keep them apart. You can type the
+IP in yourself under Settings → Run setup again (the PS5 shows it under Settings → Network).
+
+#### Verify failed
+
+The image didn't match the dump, so nothing was uploaded. Use
+**Compress again**. If it keeps failing, copy the dump again; it may be incomplete or on a
+failing drive.
+
+#### Mount not confirmed
+
+The image made it to the PS5, but ShadowMountPlus hadn't mounted
+it after five minutes. It often turns up a little later. Use **Check again**, or restart
+ShadowMountPlus.
+
+#### "The PS5 already has a different image"
+
+Delete or rename the old `<TITLE>.ffpfsc` on
+the PS5, then retry.
+
+#### The game shows up but won't start
+
+That's usually a firmware, backport or
+ShadowMountPlus version issue rather than the image. ShadowMountPlus logs to
+`/data/shadowmount/debug.log`.
+
 </details>
 
-<details><summary><b>Mount not confirmed</b></summary>
+## Contributing
 
-The image is on the PS5, but ShadowMountPlus hadn't mounted it within five minutes. Check
-the PS5's home screen, then use **Check again**. Restarting ShadowMountPlus also triggers a
-scan.
-</details>
+Bug reports and pull requests are welcome. When you report a bug, the activity log for the
+game and your ShadowMountPlus version help a lot.
 
-<details><summary><b>"The PS5 already has a different image"</b></summary>
-
-Prospack never overwrites. Delete or rename the existing `<TITLE>.ffpfsc` on the PS5, then
-**Retry**.
-</details>
-
-<details><summary><b>The game shows up but won't start</b></summary>
-
-That's on the PS5 side, not the image. Check your ShadowMountPlus version, backports, and
-the game's firmware requirement. ShadowMountPlus logs to `/data/shadowmount/debug.log`.
-</details>
-
-## Building from source
+To work on Prospack you need Node 22, Rust and Python 3.12:
 
 ```bash
 npm install
-python -m pip install -r engine/requirements-build.txt
-python engine/build.py          # freezes the engine into src-tauri/binaries/
-npx tauri build
+pip install -r engine/requirements-build.txt && python engine/build.py
+npm run tauri dev
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and tests.
+`npm run dev` runs the interface on its own in a browser, with a simulated PS5, which is
+the quickest way to work on the UI. [CONTRIBUTING.md](CONTRIBUTING.md) covers the project
+layout, the tests (which run against a fake PS5, never a real one) and the quirks of the
+PS5's FTP server.
 
 ## Credits
 
-- [MkPFS](https://github.com/PSBrew/MkPFS) does the compression and image reading.
-- Prospack is made to work with
-  [ShadowMountPlus](https://github.com/drakmor/ShadowMountPlus),
-  [Game Compressor](https://github.com/juma-sayeh/PS5-Game-Compressor) and
-  [ftpsrv](https://github.com/ps5-payload-dev/ftpsrv).
+Prospack is built on [MkPFS](https://github.com/PSBrew/MkPFS) and made to work alongside
+[ShadowMountPlus](https://github.com/drakmor/ShadowMountPlus),
+[Game Compressor](https://github.com/juma-sayeh/PS5-Game-Compressor) and
+[ftpsrv](https://github.com/ps5-payload-dev/ftpsrv). Thanks to everyone who works on them.
 
-Thanks to their authors.
-
-Only use dumps of games you own.
+Please only use dumps of games you own.
 
 ## License
 
-[GPL-3.0](LICENSE).
+[GPL-3.0](LICENSE)

@@ -1,4 +1,4 @@
-# Builds "Prospack Setup" (the premium Windows installer) around the NSIS installer that
+# Builds "Prospack Setup", the Windows installer app, around the NSIS installer that
 # `npx tauri build` produced for the main app. Run from the repo root on Windows:
 #   pwsh scripts/build-setup.ps1
 $ErrorActionPreference = "Stop"
