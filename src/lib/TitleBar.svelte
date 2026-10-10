@@ -14,9 +14,11 @@
     Prospack
   </div>
 
-  <button class="conn" class:off={ps5 && !ps5.online} onclick={onSettings} title={ps5?.error ?? ""}>
+  <button class="conn" class:off={host && ps5 && !ps5.online} class:unset={!host} onclick={onSettings} title={ps5?.error ?? ""}>
     <span class="dot" class:checking={!ps5}></span>
-    {#if !ps5}
+    {#if !host}
+      <span>No PS5 set up</span>
+    {:else if !ps5}
       <span>Looking for PS5…</span>
     {:else if ps5.online}
       <span>PS5 connected</span>
@@ -68,6 +70,8 @@
   .dot.checking { background: var(--faint); }
   .dot.checking::after { color: var(--faint); }
   .off .dot { background: var(--err); }
+  .unset .dot { background: var(--faint); }
+  .unset .dot::after { display: none; }
   .off .dot::after { display: none; }
   @keyframes ping { 0% { transform: scale(0.4); opacity: 0.7; } 80%, 100% { transform: scale(1.4); opacity: 0; } }
   .sep { width: 1px; height: 14px; background: var(--line-strong); }

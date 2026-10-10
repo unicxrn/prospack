@@ -156,7 +156,7 @@
   });
 </script>
 
-<div class="app" class:empty={!jobs.length || inSetup} style:--accent={job?.dump.accent ?? "#3d7bff"}>
+<div class="app" class:empty={!jobs.length || inSetup} style:--accent={job?.dump.accent ?? "#9b7bff"}>
   <TitleBar {ps5} host={settings?.ps5Host} onSettings={() => (showSettings = true)} onHelp={() => (showHelp = true)} />
 
   {#if jobs.length && !inSetup}
