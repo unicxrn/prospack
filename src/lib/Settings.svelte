@@ -103,6 +103,10 @@
         <span><b>Write ShadowMountPlus settings</b><small>Adds image_sector=…:65536 and image_ro=… like Game Compressor. The previous files are backed up first.</small></span>
       </label>
       <label class="toggle">
+        <input type="checkbox" bind:checked={draft.markGcValidated} /><span class="sw"></span>
+        <span><b>Show as validated in Game Compressor</b><small>Writes Game Compressor's validation record after Packer's own file-by-file check, with the original size and space saved.</small></span>
+      </label>
+      <label class="toggle">
         <input type="checkbox" bind:checked={draft.deleteLocalAfterUpload} /><span class="sw"></span>
         <span><b>Delete the local image after it mounts</b><small>Only once ShadowMountPlus has confirmed the mount.</small></span>
       </label>

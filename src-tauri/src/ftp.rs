@@ -146,6 +146,16 @@ impl Ftp {
         self.expect(&format!("RNTO {to}"), &[250, 226]).map(|_| ())
     }
 
+    /// Creates a directory if it doesn't exist. ftpsrv answers MKD with 226 rather than 257.
+    pub fn mkdir_p(&mut self, path: &str) -> Result<(), String> {
+        let (parent, name) = path.trim_end_matches('/').rsplit_once('/').ok_or("bad path")?;
+        let parent = if parent.is_empty() { "/" } else { parent };
+        if self.list(parent)?.iter().any(|e| e.is_dir && e.name == name) {
+            return Ok(());
+        }
+        self.expect(&format!("MKD {path}"), &[257, 250, 226]).map(|_| ())
+    }
+
     pub fn delete(&mut self, path: &str) -> Result<(), String> {
         self.expect(&format!("DELE {path}"), &[250, 226]).map(|_| ())
     }

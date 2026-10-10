@@ -704,6 +704,28 @@ impl Queue {
             self.with(id, |j| (j.dump.title_id.clone(), j.remote_path.clone(), j.image_path.clone())).unwrap();
         let remote = remote.ok_or("Not uploaded yet")?;
         self.with(id, |j| j.rate_label = "");
+        // Only reached after this job's Verify passed, so the record is backed by a full check.
+        if s.mark_gc_validated {
+            let (bytes, src, apr, files) = self
+                .with(id, |j| (j.image_bytes.unwrap_or(0), j.dump.total_bytes, j.dump.apr && j.dump.has_ampr_index, j.files_total))
+                .unwrap();
+            let rec = ps5::GcRecord {
+                title_id: &title,
+                image_remote: &remote,
+                image_bytes: bytes,
+                source_bytes: src,
+                apr_indexed: apr,
+                files_verified: files,
+            };
+            match ps5::connect(s).and_then(|mut ftp| {
+                let r = ps5::write_gc_record(&mut ftp, &rec);
+                ftp.quit();
+                r
+            }) {
+                Ok(()) => self.with(id, |j| j.log("", "Game Compressor will show this game as validated")),
+                Err(e) => self.with(id, |j| j.log("warn", format!("Couldn't write the Game Compressor record: {e}"))),
+            };
+        }
         if s.write_smp_hints {
             let mut ftp = ps5::connect(s)?;
             match ps5::write_hints(&mut ftp, &title, &settings::data_dir().join("backups")) {
@@ -933,6 +955,17 @@ mod e2e {
         assert!(cfg.contains("image_ro=OTHER.exfat") && cfg.contains("image_ro=PPSA00001.exfat"), "{cfg}");
         let at = std::fs::read_to_string(ps5_root.join("data/shadowmount/autotune.ini")).unwrap();
         assert_eq!(at, "image_sector=PPSA00001.ffpfsc:65536\n");
+        let rec: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(ps5_root.join(format!(
+                "data/GameCompressor/validations/PPSA00001-{:08x}.json",
+                ps5::fnv1a32("/data/homebrew/PPSA00001.ffpfsc")
+            )))
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(rec["sourceSize"], local);
+        assert_eq!(rec["compressionSourceSize"], j.dump.total_bytes);
+        assert!(ps5_root.join("data/GameCompressor/validations/PPSA00001.json").is_file());
         let ml = std::fs::read_to_string(ps5_root.join("data/shadowmount/manual.lst")).unwrap();
         assert_eq!(ml, "/data/homebrew/PPSA00001.ffpfsc\n");
         assert!(dump.join("ampr_emu.index").is_file(), "MkPFS should have generated the AMPR index");

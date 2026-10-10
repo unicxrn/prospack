@@ -32,11 +32,13 @@ def fake_smp():
 threading.Thread(target=fake_smp, daemon=True).start()
 
 class Ps5Handler(FTPHandler):
-    """Answers like ftpsrv.elf: RNTO and DELE reply 226 instead of 250."""
+    """Answers like ftpsrv.elf: RNTO, DELE and MKD reply 226."""
     def respond(self, resp, logfun=None):
         cmd = (getattr(self, "_last_cmd", "") or "").upper()
         if cmd in ("RNTO", "DELE") and resp.startswith("250"):
             resp = "226" + resp[3:]
+        if cmd == "MKD" and resp.startswith("257"):
+            resp = "226 Directory created"
         return super().respond(resp) if logfun is None else super().respond(resp, logfun)
     def ftp_SIZE(self, path):
         # Mimic ftpsrv v1.6.22: a missing file reports size -1 instead of 550.

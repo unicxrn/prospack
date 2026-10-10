@@ -20,6 +20,8 @@ pub struct Settings {
     pub auto_upload: bool,
     /// Write the image_sector / image_ro hints Game Compressor writes.
     pub write_smp_hints: bool,
+    /// Write Game Compressor's validation record so GC shows the game as validated.
+    pub mark_gc_validated: bool,
     /// Delete the local image once it's confirmed on the PS5.
     pub delete_local_after_upload: bool,
 }
@@ -37,6 +39,7 @@ impl Default for Settings {
             verify_workers: 0,
             auto_upload: true,
             write_smp_hints: true,
+            mark_gc_validated: true,
             delete_local_after_upload: false,
         }
     }

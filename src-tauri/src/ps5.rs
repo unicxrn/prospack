@@ -167,6 +167,63 @@ pub fn write_hints(ftp: &mut Ftp, title_id: &str, backup_dir: &Path) -> Result<H
     Ok(res)
 }
 
+// ---------------------------------------------------------------------------
+// Game Compressor's validation record. GC shows a compressed game as "validated", with its
+// original size and savings, when /data/GameCompressor/validations/<TITLE>-<fnv1a32(path)>.json
+// (or the legacy <TITLE>.json) names this path, its sourceSize equals the image's size, and
+// the status isn't a bad-blocks or stats-only one.
+
+pub const GC_VALIDATIONS: &str = "/data/GameCompressor/validations";
+
+pub fn fnv1a32(s: &str) -> u32 {
+    s.bytes().fold(2166136261u32, |h, b| (h ^ b as u32).wrapping_mul(16777619))
+}
+
+pub struct GcRecord<'a> {
+    pub title_id: &'a str,
+    pub image_remote: &'a str,
+    pub image_bytes: u64,
+    pub source_bytes: u64,
+    pub apr_indexed: bool,
+    pub files_verified: u64,
+}
+
+pub fn gc_record_json(r: &GcRecord, now: u64) -> String {
+    let v = serde_json::json!({
+        "titleId": r.title_id,
+        "path": r.image_remote,
+        "sourceSize": r.image_bytes,
+        "sourceMtime": now,
+        "compressionSourceSize": r.source_bytes,
+        "compressionCompressedSize": r.image_bytes,
+        "compressionSavedBytes": r.source_bytes.saturating_sub(r.image_bytes),
+        "aprIndexed": r.apr_indexed,
+        "amprHotSwapOptimized": false,
+        // Any status other than bad-blocks-found*, compression-stats or not-mounted reads as validated.
+        "status": "verified-by-packer",
+        "nestedName": format!("{}.exfat", r.title_id),
+        "repairedBlocks": 0,
+        "hashMode": "packer-file-compare",
+        "hashCheckedBlocks": 0,
+        "hashMatchedBlocks": 0,
+        "hashMismatchedBlocks": 0,
+        "verifiedBy": "Packer",
+        "verifiedFiles": r.files_verified,
+        "updatedAt": now,
+    });
+    serde_json::to_string_pretty(&v).unwrap() + "\n"
+}
+
+pub fn write_gc_record(ftp: &mut Ftp, r: &GcRecord) -> Result<(), String> {
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+    let body = gc_record_json(r, now);
+    ftp.mkdir_p("/data/GameCompressor")?;
+    ftp.mkdir_p(GC_VALIDATIONS)?;
+    let keyed = format!("{GC_VALIDATIONS}/{}-{:08x}.json", r.title_id, fnv1a32(r.image_remote));
+    ftp.put_atomic(&keyed, body.as_bytes())?;
+    ftp.put_atomic(&format!("{GC_VALIDATIONS}/{}.json", r.title_id), body.as_bytes())
+}
+
 /// manual.lst with `image` added, dropping other entries for the same title (same rules as
 /// Game Compressor: exact path, or a basename of TITLE followed by end, '-' or '.').
 pub fn manual_list_with(content: &str, title_id: &str, image: &str) -> String {
@@ -275,6 +332,32 @@ mod tests {
     fn unchanged_when_already_correct() {
         let before = "a=1\nimage_ro=PPSA01234.exfat\n";
         assert!(upsert_hint(before, &["image_ro", "image_rw"], &names(), Some("image_ro=PPSA01234.exfat")).is_none());
+    }
+
+    #[test]
+    fn fnv_matches_game_compressor_file_names() {
+        // Names Game Compressor actually wrote on the console.
+        assert_eq!(format!("{:08x}", fnv1a32("/data/homebrew/PPSA05678.ffpfsc")), "17b59d6b");
+        assert_eq!(format!("{:08x}", fnv1a32("/data/homebrew/PPSA01234.ffpfsc")), "844067eb");
+    }
+
+    #[test]
+    fn gc_record_has_the_fields_gc_reads() {
+        let r = GcRecord {
+            title_id: "PPSA09012",
+            image_remote: "/data/homebrew/PPSA09012.ffpfsc",
+            image_bytes: 53_800_000_000,
+            source_bytes: 86_900_000_000,
+            apr_indexed: true,
+            files_verified: 35,
+        };
+        let v: serde_json::Value = serde_json::from_str(&gc_record_json(&r, 1)).unwrap();
+        assert_eq!(v["path"], "/data/homebrew/PPSA09012.ffpfsc");
+        assert_eq!(v["sourceSize"], 53_800_000_000u64);
+        assert_eq!(v["compressionSavedBytes"], 33_100_000_000u64);
+        assert_eq!(v["aprIndexed"], true);
+        let status = v["status"].as_str().unwrap();
+        assert!(!status.starts_with("bad-blocks") && status != "compression-stats" && status != "not-mounted");
     }
 
     #[test]

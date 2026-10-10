@@ -8,7 +8,7 @@ const STAGES = ["compress", "verify", "upload", "mount"];
 let settings = {
   ps5Host: "192.168.0.50", ftpPort: 2121, webPort: 8888, remoteDir: "/data/homebrew",
   outputDir: "/home/you/PS5 Images", compressionLevel: 7, cpuCount: 0, verifyWorkers: 0,
-  autoUpload: true, writeSmpHints: true, deleteLocalAfterUpload: false,
+  autoUpload: true, writeSmpHints: true, markGcValidated: true, deleteLocalAfterUpload: false,
 };
 
 const sample = {
