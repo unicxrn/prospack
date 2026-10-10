@@ -430,7 +430,7 @@ impl Queue {
     fn compress(&self, id: u64, s: &Settings, cancel: &Arc<AtomicBool>) -> Result<(), String> {
         let dump = self.with(id, |j| j.dump.clone()).unwrap();
         let out_dir = PathBuf::from(&s.output_dir);
-        std::fs::create_dir_all(&out_dir).map_err(|e| format!("Can't create {}: {e}", out_dir.display()))?;
+        std::fs::create_dir_all(&out_dir).map_err(|e| format!("Can't create the image folder {} ({e}). Pick another image folder in Settings.", out_dir.display()))?;
         let final_path = out_dir.join(format!("{}.ffpfsc", dump.title_id));
 
         if final_path.is_file() {
@@ -447,7 +447,7 @@ impl Queue {
         let free = free_space(&out_dir).unwrap_or(u64::MAX);
         if free < dump.total_bytes / 3 {
             return Err(format!(
-                "Only {} free in {}. The image could need up to {}.",
+                "Only {} free in {}. The image could need up to {}. Free up space or pick another image folder in Settings.",
                 gb(free),
                 out_dir.display(),
                 gb(dump.total_bytes)
@@ -687,7 +687,7 @@ impl Queue {
         }
         ftp.rename(&tmp_remote, &final_remote)?;
         if ftp.size(&final_remote)? != Some(local_size) {
-            return Err("The image was renamed but its size on the PS5 doesn't match".into());
+            return Err("The image was renamed but its size on the PS5 doesn't match. Delete it on the PS5 and Retry.".into());
         }
         ftp.quit();
         let secs = started.elapsed().as_secs();

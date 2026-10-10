@@ -38,13 +38,13 @@ pub struct DumpArt {
 pub fn inspect(path: &Path) -> Result<DumpInfo, String> {
     let param_path = path.join("sce_sys/param.json");
     let raw = std::fs::read_to_string(&param_path)
-        .map_err(|_| "This folder isn't a PS5 dump: sce_sys/param.json is missing.".to_string())?;
+        .map_err(|_| "This folder isn't a PS5 game dump: sce_sys/param.json is missing. Pick the folder that contains sce_sys and eboot.bin, for example PPSA01234-app.".to_string())?;
     let param: serde_json::Value =
         serde_json::from_str(&raw).map_err(|e| format!("sce_sys/param.json is not valid JSON: {e}"))?;
 
     let title_id = param["titleId"].as_str().unwrap_or("").trim().to_string();
     if title_id.len() != 9 || !title_id.chars().all(|c| c.is_ascii_alphanumeric()) {
-        return Err(format!("Unexpected title ID {title_id:?} in sce_sys/param.json."));
+        return Err(format!("Unexpected title ID {title_id:?} in sce_sys/param.json. Pick the game's top folder (the one containing sce_sys and eboot.bin)."));
     }
     let loc = &param["localizedParameters"];
     let lang = loc["defaultLanguage"].as_str().unwrap_or("en-US");
@@ -56,7 +56,7 @@ pub fn inspect(path: &Path) -> Result<DumpInfo, String> {
     let version = param["contentVersion"].as_str().unwrap_or("").to_string();
 
     if !path.join("eboot.bin").is_file() {
-        return Err("This folder has no eboot.bin, so it doesn't look like a complete game dump.".into());
+        return Err("This folder has no eboot.bin, so it doesn't look like a complete game dump. Pick the game's top folder (it contains sce_sys and eboot.bin).".into());
     }
 
     let (file_count, total_bytes) = tally(path);

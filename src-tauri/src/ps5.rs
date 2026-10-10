@@ -157,7 +157,7 @@ pub fn write_hints(ftp: &mut Ftp, title_id: &str, backup_dir: &Path) -> Result<H
         let path = format!("{SMP_DIR}/{file}");
         let current = ftp.retr(&path)?;
         if current.is_none() && file == "config.ini" {
-            return Err("ShadowMountPlus isn't set up on this PS5 (no /data/shadowmount/config.ini)".into());
+            return Err("ShadowMountPlus isn't set up on this PS5 (no /data/shadowmount/config.ini). Load ShadowMountPlus on the PS5, then use Check again.".into());
         }
         let text = String::from_utf8_lossy(current.as_deref().unwrap_or_default()).into_owned();
         let Some(next) = upsert_hint(&text, &keys, &names, Some(&line)) else { continue };

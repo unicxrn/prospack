@@ -176,7 +176,7 @@ impl Engine {
             return Err("Cancelled".into());
         }
         if !status {
-            return Err(parser.last_error().unwrap_or_else(|| "MkPFS failed; see the activity log".into()));
+            return Err(parser.last_error().unwrap_or_else(|| "Compression failed. The activity log below has MkPFS's output; Retry once, and if it fails again, check the dump folder is complete and readable.".into()));
         }
         Ok(())
     }
@@ -213,7 +213,7 @@ impl Engine {
         if cancel.load(Ordering::Relaxed) {
             return Err("Cancelled".into());
         }
-        verdict.ok_or_else(|| "The verifier stopped without a result".into())
+        verdict.ok_or_else(|| "The verifier stopped without a result. Retry; if it keeps happening, the image may be unreadable, so use Compress again.".into())
     }
 }
 
@@ -290,7 +290,7 @@ fn run_streaming(mut cmd: Command, cancel: &Arc<AtomicBool>, on: &mut dyn FnMut(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     detach_group(&mut cmd);
-    let mut child = cmd.spawn().map_err(|e| format!("Couldn't start {:?}: {e}", cmd.get_program()))?;
+    let mut child = cmd.spawn().map_err(|e| format!("The compression engine couldn't start ({e}). Reinstall Prospack, and allow it in your antivirus if it was blocked."))?;
     let pid = child.id();
     let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
     let mut readers = Vec::new();

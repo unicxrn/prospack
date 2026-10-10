@@ -68,7 +68,7 @@ impl Ftp {
         if r.code == 331 {
             let r = ftp.cmd("PASS anonymous@")?;
             if r.code != 230 && r.code != 202 {
-                return Err(format!("FTP login refused: {} {}", r.code, r.text));
+                return Err(format!("The PS5's FTP server refused the login ({} {}). Prospack logs in anonymously; allow anonymous login in your FTP server.", r.code, r.text));
             }
         } else if r.code != 230 {
             return Err(format!("FTP login refused: {} {}", r.code, r.text));
