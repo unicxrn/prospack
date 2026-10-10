@@ -43,7 +43,7 @@
     <div class="left">
       <div class="kicker">Step {job.stage + 1} of 4 · {STAGE_NAMES[stageKey]}</div>
       {#if stageKey === "mount"}
-        <div class="big num">{clock(job.stageSecs)}<small>of 2:00</small></div>
+        <div class="big num">{clock(job.stageSecs)}<small>of 5:00</small></div>
       {:else}
         <div class="big num">{shown.toFixed(1)}<small>%</small></div>
       {/if}
@@ -114,7 +114,14 @@
           <div><dt>Saved</dt><dd class="num ok">{gb(saved)} · {savedPct}%</dd></div>
           <div><dt>On PS5</dt><dd class="mono path">{job.remotePath}</dd></div>
         </dl>
+        {#if job.stages[3].state === "warn"}
+          <p class="desc">
+            The image is on the PS5 and listed in ShadowMountPlus's manual.lst, but the mount wasn't confirmed in time.
+            It often appears a little later; check the game list on the PS5.
+          </p>
+        {/if}
         <div class="actions">
+          {#if job.stages[3].state === "warn"}<button class="btn primary" onclick={onResume}>Check again</button>{/if}
           <button class="btn" onclick={onReveal}>Show image</button>
           <button class="btn ghost" onclick={onRemove}>Clear from list</button>
         </div>

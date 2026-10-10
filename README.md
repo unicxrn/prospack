@@ -24,8 +24,12 @@ deletes the dump.
 4. **Mount.** The upload writes the same hints Game Compressor writes:
    `image_sector=<TITLE>.ffpfsc:65536` in `/data/shadowmount/autotune.ini` and
    `image_ro=<TITLE>.exfat` in `config.ini`. Both files are backed up first to
-   `~/.local/share/ps5-packer/backups/` and replaced atomically. Packer then polls
-   `/user/app/<TITLE>/mount_img.lnk` for up to two minutes.
+   `~/.local/share/ps5-packer/backups/` and replaced atomically. It also adds the image to
+   `manual.lst`, as Game Compressor does. Rewriting that file is what makes
+   ShadowMountPlus scan; a new file in `/data/homebrew` alone can sit unnoticed for
+   minutes. Packer then polls `/user/app/<TITLE>/mount_img.lnk` for up to five minutes,
+   rewriting `manual.lst` every 30 s. If the mount isn't confirmed, "Check again" repeats
+   this step.
 
 ## Using it
 

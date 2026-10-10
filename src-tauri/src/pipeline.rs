@@ -11,6 +11,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub const STAGES: [&str; 4] = ["compress", "verify", "upload", "mount"];
+const MOUNT_WAIT_SECS: u64 = 300;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -267,8 +268,12 @@ impl Queue {
     /// or starts the upload of a verified job.
     pub fn resume(&self, id: u64) -> Result<(), String> {
         self.with(id, |j| {
-            if !matches!(j.status, JobStatus::Failed | JobStatus::Cancelled | JobStatus::Ready) {
+            let recheck = j.status == JobStatus::Done && j.stages[3].state == StageState::Warn;
+            if !recheck && !matches!(j.status, JobStatus::Failed | JobStatus::Cancelled | JobStatus::Ready) {
                 return Err("Nothing to resume".to_string());
+            }
+            if recheck {
+                j.stages[3].state = StageState::Pending;
             }
             let mut from = j.stages.iter().position(|s| s.state != StageState::Done).unwrap_or(STAGES.len());
             // A failed verify means the image is bad: rebuild it rather than re-checking the same file.
@@ -720,26 +725,36 @@ impl Queue {
             };
             ftp.quit();
         }
+        match ps5::connect(s).and_then(|mut ftp| {
+            let r = ps5::request_scan(&mut ftp, &title, &remote, Some(&settings::data_dir().join("backups")));
+            ftp.quit();
+            r
+        }) {
+            Ok(true) => self.with(id, |j| j.log("", format!("ShadowMountPlus manual.lst: added {remote}"))),
+            Ok(false) => self.with(id, |j| j.log("", "ShadowMountPlus manual.lst: already listed, nudged a rescan")),
+            Err(e) => self.with(id, |j| j.log("warn", format!("Couldn't update manual.lst ({e}); waiting for the periodic scan"))),
+        };
         let started = Instant::now();
         let mut last = Instant::now();
-        let mounted = ps5::wait_for_mount(s, &title, &remote, Duration::from_secs(120), cancel, &mut |secs| {
+        let mounted = ps5::wait_for_mount(s, &title, &remote, Duration::from_secs(MOUNT_WAIT_SECS), cancel, &mut |secs| {
             self.progress(id, &mut last, started, |j| {
-                j.pct = (secs as f64 / 120.0 * 100.0).min(99.0);
+                j.pct = (secs as f64 / MOUNT_WAIT_SECS as f64 * 100.0).min(99.0);
                 j.stages[3].meta = format!("Waiting for ShadowMountPlus · {secs}s");
             });
         })?;
         self.with(id, |j| {
             if mounted {
+                j.warnings.retain(|w| !w.starts_with("ShadowMountPlus hasn't mounted"));
                 j.stages[3].meta = "Mounted by ShadowMountPlus".into();
                 j.log("ok", "ShadowMountPlus mounted the image. It's ready to play.");
             } else {
                 j.stages[3].state = StageState::Warn;
-                j.stages[3].meta = "Not confirmed within 2 minutes".into();
+                j.stages[3].meta = "Not confirmed within 5 minutes".into();
                 j.warnings.push(
-                    "ShadowMountPlus hasn't mounted the image yet. It scans every 15 s; check the PS5, or restart ShadowMountPlus."
+                    "ShadowMountPlus hasn't mounted the image yet. The game may still show up; use Check again, or restart ShadowMountPlus."
                         .into(),
                 );
-                j.log("warn", "Mount not confirmed within 2 minutes");
+                j.log("warn", "Mount not confirmed within 5 minutes");
             }
         });
         if mounted && s.delete_local_after_upload {
@@ -918,6 +933,8 @@ mod e2e {
         assert!(cfg.contains("image_ro=OTHER.exfat") && cfg.contains("image_ro=PPSA00001.exfat"), "{cfg}");
         let at = std::fs::read_to_string(ps5_root.join("data/shadowmount/autotune.ini")).unwrap();
         assert_eq!(at, "image_sector=PPSA00001.ffpfsc:65536\n");
+        let ml = std::fs::read_to_string(ps5_root.join("data/shadowmount/manual.lst")).unwrap();
+        assert_eq!(ml, "/data/homebrew/PPSA00001.ffpfsc\n");
         assert!(dump.join("ampr_emu.index").is_file(), "MkPFS should have generated the AMPR index");
 
         // Same title again: image reused locally, upload skipped as identical.

@@ -15,8 +15,13 @@ if not os.path.exists(cfg):
 def fake_smp():
     hb = os.path.join(root, "data/homebrew")
     while True:
+        # Like the real one in practice: new images are only picked up once manual.lst lists them.
+        try:
+            listed = open(os.path.join(root, "data/shadowmount/manual.lst")).read().split()
+        except FileNotFoundError:
+            listed = []
         for n in os.listdir(hb):
-            if n.endswith(".ffpfsc") and not n.startswith("."):
+            if n.endswith(".ffpfsc") and not n.startswith(".") and f"/data/homebrew/{n}" in listed:
                 tid = n[:9]
                 d = os.path.join(root, "user/app", tid); os.makedirs(d, exist_ok=True)
                 lnk = os.path.join(d, "mount_img.lnk")

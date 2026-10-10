@@ -167,6 +167,48 @@ pub fn write_hints(ftp: &mut Ftp, title_id: &str, backup_dir: &Path) -> Result<H
     Ok(res)
 }
 
+/// manual.lst with `image` added, dropping other entries for the same title (same rules as
+/// Game Compressor: exact path, or a basename of TITLE followed by end, '-' or '.').
+pub fn manual_list_with(content: &str, title_id: &str, image: &str) -> String {
+    let mut out: Vec<&str> = content
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .filter(|l| {
+            if *l == image {
+                return false;
+            }
+            let base = l.rsplit('/').next().unwrap_or(l);
+            let same_title = base.len() >= 9
+                && base[..9].eq_ignore_ascii_case(title_id)
+                && matches!(base.as_bytes().get(9), None | Some(b'-') | Some(b'.'));
+            l.starts_with('#') || !same_title
+        })
+        .collect();
+    out.push(image);
+    out.join("\n") + "\n"
+}
+
+/// Adds the image to /data/shadowmount/manual.lst. Rewriting that file is what makes
+/// ShadowMountPlus scan; a new file in the folder alone may not be picked up for minutes.
+pub fn request_scan(ftp: &mut Ftp, title_id: &str, image: &str, backup_dir: Option<&Path>) -> Result<bool, String> {
+    let path = format!("{SMP_DIR}/manual.lst");
+    let current = ftp.retr(&path)?;
+    let text = String::from_utf8_lossy(current.as_deref().unwrap_or_default()).into_owned();
+    let next = manual_list_with(&text, title_id, image);
+    let changed = next.trim_end() != text.trim_end();
+    if changed {
+        if let (Some(dir), Some(bytes)) = (backup_dir, &current) {
+            std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+            let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+            std::fs::write(dir.join(format!("{stamp}-manual.lst")), bytes).map_err(|e| e.to_string())?;
+        }
+    }
+    // Rewrite even when unchanged: the replace itself is the scan trigger.
+    ftp.put_atomic(&path, next.as_bytes())?;
+    Ok(changed)
+}
+
 /// Polls `/user/app/<TITLE>/mount_img.lnk` until ShadowMountPlus records the image.
 pub fn wait_for_mount(
     s: &Settings,
@@ -178,7 +220,15 @@ pub fn wait_for_mount(
 ) -> Result<bool, String> {
     let start = Instant::now();
     let link = format!("/user/app/{title_id}/mount_img.lnk");
+    let mut last_nudge = Instant::now();
     while start.elapsed() < timeout {
+        if last_nudge.elapsed() >= Duration::from_secs(30) {
+            last_nudge = Instant::now();
+            if let Ok(mut ftp) = connect(s) {
+                let _ = request_scan(&mut ftp, title_id, image_remote, None);
+                ftp.quit();
+            }
+        }
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             return Err("Cancelled".into());
         }
@@ -225,6 +275,17 @@ mod tests {
     fn unchanged_when_already_correct() {
         let before = "a=1\nimage_ro=PPSA01234.exfat\n";
         assert!(upsert_hint(before, &["image_ro", "image_rw"], &names(), Some("image_ro=PPSA01234.exfat")).is_none());
+    }
+
+    #[test]
+    fn manual_list_replaces_same_title_entries() {
+        let before = "/data/homebrew/PPSA05678.ffpfsc\n/data/homebrew/PPSA09012-app\n\n/data/homebrew/PPSA090120.ffpfsc\n";
+        let after = manual_list_with(before, "PPSA09012", "/data/homebrew/PPSA09012.ffpfsc");
+        assert_eq!(
+            after,
+            "/data/homebrew/PPSA05678.ffpfsc\n/data/homebrew/PPSA090120.ffpfsc\n/data/homebrew/PPSA09012.ffpfsc\n"
+        );
+        assert_eq!(manual_list_with("", "PPSA09012", "/x/PPSA09012.ffpfsc"), "/x/PPSA09012.ffpfsc\n");
     }
 
     #[test]
