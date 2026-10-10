@@ -113,7 +113,7 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 export const mock = {
   getSettings: async () => structuredClone(settings),
   saveSettings: async (v) => { settings = v; },
-  engineStatus: async () => ({ python: "3.14.7", mkpfs: "1.1.0", ready: true, dir: "~/.local/share/ps5-packer/engine" }),
+  engineStatus: async () => ({ python: null, mkpfs: "1.1.0", ready: true, bundled: true, canInstall: false, dir: "~/.local/share/prospack/engine" }),
   installEngine: async () => { for (const l of ["Creating Python environment", "Installing MkPFS 1.1.0"]) { emit("engine-log", l); await delay(500); } return mock.engineStatus(); },
   inspectDump: async () => { throw new Error("preview"); },
   addJob: async () => { throw "Adding dumps needs the desktop app (this is a browser preview)"; },

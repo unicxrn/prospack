@@ -876,6 +876,18 @@ mod tests {
 mod e2e {
     use super::*;
 
+    fn copy_dir(from: &Path, to: &Path) {
+        std::fs::create_dir_all(to).unwrap();
+        for e in std::fs::read_dir(from).unwrap().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                copy_dir(&p, &to.join(e.file_name()));
+            } else {
+                std::fs::copy(&p, to.join(e.file_name())).unwrap();
+            }
+        }
+    }
+
     fn wait_until(q: &Queue, id: u64, secs: u64) -> Job {
         let t = Instant::now();
         loop {
@@ -895,17 +907,19 @@ mod e2e {
         let tmp = tempfile::tempdir().unwrap();
         std::env::set_var("PROSPACK_CONFIG_DIR", tmp.path().join("config"));
         std::env::set_var("PROSPACK_DATA_DIR", tmp.path().join("data"));
-        let engine_dir = tmp.path().join("data/engine");
-        std::fs::create_dir_all(&engine_dir).unwrap();
-        std::os::unix::fs::symlink(scratch.join("mkvenv"), engine_dir.join("venv")).unwrap();
+        // Engine: $PROSPACK_ENGINE (frozen build) if set, else the scratch venv as the dev venv.
+        if std::env::var_os("PROSPACK_ENGINE").is_none() {
+            let engine_dir = tmp.path().join("data/engine");
+            std::fs::create_dir_all(&engine_dir).unwrap();
+            #[cfg(unix)]
+            std::os::unix::fs::symlink(scratch.join("mkvenv"), engine_dir.join("venv")).unwrap();
+            #[cfg(windows)]
+            std::os::windows::fs::symlink_dir(scratch.join("mkvenv"), engine_dir.join("venv")).unwrap();
+        }
 
         // Fresh copy of the fake dump so MkPFS's ampr_emu.index write can't leak between runs.
         let dump = tmp.path().join("PPSA00001-app");
-        assert!(std::process::Command::new("cp")
-            .args(["-r", scratch.join("fakedump/PPSA00001-app").to_str().unwrap(), dump.to_str().unwrap()])
-            .status()
-            .unwrap()
-            .success());
+        copy_dir(&scratch.join("fakedump/PPSA00001-app"), &dump);
         let _ = std::fs::remove_file(dump.join("ampr_emu.index"));
 
         let ps5_root = tmp.path().join("ps5");
@@ -917,7 +931,8 @@ mod e2e {
                 let _ = self.0.wait();
             }
         }
-        let _server = KillOnDrop(std::process::Command::new(scratch.join("mkvenv/bin/python"))
+        let py = if cfg!(windows) { scratch.join("mkvenv/Scripts/python.exe") } else { scratch.join("mkvenv/bin/python") };
+        let _server = KillOnDrop(std::process::Command::new(py)
             .arg(scratch.join("fake_ps5.py"))
             .arg(&ps5_root)
             .arg(port.to_string())

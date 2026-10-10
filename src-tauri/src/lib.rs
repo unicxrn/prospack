@@ -120,7 +120,6 @@ pub fn run() {
                 let _ = handle.emit(event, payload);
             });
             let engine = Arc::new(engine::Engine::new(&settings::data_dir()));
-            let _ = engine.write_verifier();
             let queue = pipeline::Queue::new(emitter, engine.clone());
             // Folders passed on the command line (or via "Open with") are queued straight away.
             for arg in std::env::args().skip(1).filter(|a| !a.starts_with('-')) {

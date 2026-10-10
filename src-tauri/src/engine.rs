@@ -1,4 +1,8 @@
-//! The compression engine: a private Python venv with MkPFS, plus the deep verifier.
+//! The compression engine: MkPFS plus the deep verifier, as one `prospack-engine` program.
+//!
+//! Release builds ship it frozen as a Tauri sidecar next to the app. Developers can point
+//! `PROSPACK_ENGINE` at a frozen build, or let the app run `engine/prospack_engine.py` in a
+//! private venv ("Install MkPFS" in the UI).
 
 use serde::Serialize;
 use std::io::Read;
@@ -9,7 +13,9 @@ use std::sync::Arc;
 
 /// Pinned so a new MkPFS release can't silently change the image format.
 pub const MKPFS_VERSION: &str = "1.1.0";
-const VERIFIER: &str = include_str!("../resources/deep_verify.py");
+const EXE: &str = if cfg!(windows) { ".exe" } else { "" };
+/// The repo's engine sources, for the developer fallback.
+const DEV_ENGINE_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../engine");
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,7 +23,17 @@ pub struct EngineStatus {
     pub python: Option<String>,
     pub mkpfs: Option<String>,
     pub ready: bool,
+    /// True when the frozen engine shipped with the app is in use.
+    pub bundled: bool,
+    /// Whether "Install MkPFS" (developer venv) is possible on this machine.
+    pub can_install: bool,
     pub dir: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum Runner {
+    Frozen(PathBuf),
+    Script { python: PathBuf, script: PathBuf },
 }
 
 pub struct Engine {
@@ -32,65 +48,97 @@ impl Engine {
     fn venv(&self) -> PathBuf {
         self.root.join("venv")
     }
-    fn mkpfs_bin(&self) -> PathBuf {
-        self.venv().join("bin/mkpfs")
-    }
     fn python_bin(&self) -> PathBuf {
-        self.venv().join("bin/python")
+        if cfg!(windows) {
+            self.venv().join("Scripts/python.exe")
+        } else {
+            self.venv().join("bin/python")
+        }
     }
-    fn verifier(&self) -> PathBuf {
-        self.root.join("deep_verify.py")
+    fn dev_script() -> Option<PathBuf> {
+        std::env::var_os("PROSPACK_ENGINE_SCRIPT")
+            .map(PathBuf::from)
+            .or_else(|| Some(PathBuf::from(DEV_ENGINE_DIR).join("prospack_engine.py")))
+            .filter(|p| p.is_file())
+    }
+
+    /// Sidecar next to the app, then $PROSPACK_ENGINE, then the developer venv.
+    fn runner(&self) -> Option<Runner> {
+        let sidecar = std::env::current_exe()
+            .ok()
+            .and_then(|e| e.parent().map(|d| d.join(format!("prospack-engine{EXE}"))))
+            .filter(|p| p.is_file());
+        if let Some(p) = sidecar {
+            return Some(Runner::Frozen(p));
+        }
+        if let Some(p) = std::env::var_os("PROSPACK_ENGINE").map(PathBuf::from).filter(|p| p.is_file()) {
+            return Some(Runner::Frozen(p));
+        }
+        let python = self.python_bin();
+        match (python.is_file(), Self::dev_script()) {
+            (true, Some(script)) => Some(Runner::Script { python, script }),
+            _ => None,
+        }
+    }
+
+    fn command(&self) -> Result<Command, String> {
+        match self.runner() {
+            Some(Runner::Frozen(p)) => Ok(quiet(p)),
+            Some(Runner::Script { python, script }) => {
+                let mut c = quiet(python);
+                c.arg(script);
+                Ok(c)
+            }
+            None => Err("The compression engine is missing. Reinstall Prospack.".into()),
+        }
     }
 
     pub fn status(&self) -> EngineStatus {
-        let python = quiet("python3")
-            .arg("--version")
-            .output()
+        let runner = self.runner();
+        let mkpfs = self
+            .command()
             .ok()
+            .and_then(|mut c| c.arg("--version").output().ok())
             .filter(|o| o.status.success())
-            .map(|o| String::from_utf8_lossy(&o.stdout).trim().replace("Python ", ""));
-        let mkpfs = if self.mkpfs_bin().is_file() {
-            quiet(self.python_bin())
-                .args(["-c", "import importlib.metadata as m; print(m.version('mkpfs'))"])
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().trim_start_matches("mkpfs ").to_string());
+        let can_install = Self::dev_script().is_some();
+        let python = if matches!(runner, Some(Runner::Frozen(_))) || !can_install {
+            None
+        } else {
+            quiet(if cfg!(windows) { "python" } else { "python3" })
+                .arg("--version")
                 .output()
                 .ok()
                 .filter(|o| o.status.success())
-                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        } else {
-            None
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().replace("Python ", ""))
         };
-        let ready = mkpfs.is_some();
-        EngineStatus { python, mkpfs, ready, dir: self.root.to_string_lossy().into_owned() }
+        EngineStatus {
+            python,
+            ready: mkpfs.is_some(),
+            mkpfs,
+            bundled: matches!(runner, Some(Runner::Frozen(_))),
+            can_install,
+            dir: self.root.to_string_lossy().into_owned(),
+        }
     }
 
-    /// Creates the venv and installs the pinned MkPFS. Streams pip's output to `log`.
+    /// Developer setup: a venv with the engine's requirements. Release builds never need this.
     pub fn install(&self, log: &mut dyn FnMut(String)) -> Result<(), String> {
+        let script = Self::dev_script()
+            .ok_or("The compression engine ships with Prospack. Reinstall Prospack to restore it.")?;
+        let reqs = script.with_file_name("requirements.txt");
         std::fs::create_dir_all(&self.root).map_err(|e| e.to_string())?;
         if !self.python_bin().is_file() {
             log("Creating Python environment".into());
-            run_logged(quiet("python3").arg("-m").arg("venv").arg(self.venv()), log)?;
+            run_logged(quiet(if cfg!(windows) { "python" } else { "python3" }).arg("-m").arg("venv").arg(self.venv()), log)?;
         }
         log(format!("Installing MkPFS {MKPFS_VERSION}"));
         run_logged(
-            quiet(self.python_bin()).args([
-                "-m",
-                "pip",
-                "install",
-                "--disable-pip-version-check",
-                "--upgrade",
-                &format!("mkpfs=={MKPFS_VERSION}"),
-            ]),
+            quiet(self.python_bin())
+                .args(["-m", "pip", "install", "--disable-pip-version-check", "-r"])
+                .arg(reqs),
             log,
         )?;
-        self.write_verifier()?;
-        Ok(())
-    }
-
-    pub fn write_verifier(&self) -> Result<(), String> {
-        std::fs::create_dir_all(&self.root).map_err(|e| e.to_string())?;
-        if std::fs::read_to_string(self.verifier()).ok().as_deref() != Some(VERIFIER) {
-            std::fs::write(self.verifier(), VERIFIER).map_err(|e| e.to_string())?;
-        }
         Ok(())
     }
 
@@ -107,7 +155,7 @@ impl Engine {
     ) -> Result<(), String> {
         let tmp_dir = out.parent().unwrap().join("tmp");
         std::fs::create_dir_all(&tmp_dir).map_err(|e| e.to_string())?;
-        let mut cmd = quiet(self.mkpfs_bin());
+        let mut cmd = self.command()?;
         cmd.args(["pack", "folder", "--no-adjust-output-file-extension", "--ampr-skip-regen-if-exists"])
             .arg("--compression-level")
             .arg(level.min(9).to_string())
@@ -141,14 +189,13 @@ impl Engine {
         cancel: &Arc<AtomicBool>,
         on: &mut dyn FnMut(VerifyEvent),
     ) -> Result<bool, String> {
-        self.write_verifier()?;
         let workers = if workers == 0 {
             (std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2) / 2).clamp(1, 8) as u32
         } else {
             workers
         };
-        let mut cmd = quiet(self.python_bin());
-        cmd.arg(self.verifier()).arg(image).arg(src).arg(workers.to_string());
+        let mut cmd = self.command()?;
+        cmd.arg("verify").arg(image).arg(src).arg(workers.to_string());
         let mut buf = String::new();
         let mut verdict: Option<bool> = None;
         run_streaming(cmd, cancel, &mut |chunk| {
@@ -464,6 +511,7 @@ mod cancel_test {
     /// PACKER_E2E_SCRATCH=<dir with mkvenv> cargo test cancel -- --ignored
     #[test]
     #[ignore]
+    #[cfg(unix)]
     fn cancel_kills_mkpfs_promptly() {
         let scratch = PathBuf::from(std::env::var("PACKER_E2E_SCRATCH").unwrap());
         let tmp = tempfile::tempdir().unwrap();
@@ -483,6 +531,7 @@ mod cancel_test {
         let out_dir = tmp.path().join("out");
         std::fs::create_dir_all(&out_dir).unwrap();
         let engine = Engine { root };
+        assert!(engine.runner().is_some(), "no engine: set PROSPACK_ENGINE or provide the venv");
         let cancel = Arc::new(AtomicBool::new(false));
         let c2 = cancel.clone();
         let t = std::time::Instant::now();

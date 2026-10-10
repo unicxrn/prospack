@@ -11,21 +11,30 @@
 <div class="empty">
   {#if engine && !engine.ready}
     <section class="setup reveal">
-      <div class="kicker">One-time setup</div>
-      <h2>Install the compression engine</h2>
-      <p>
-        Prospack uses <b>MkPFS 1.1.0</b>, the same format Game Compressor builds on. It goes into a private Python
-        environment in <span class="mono">{engine.dir}</span> and doesn't touch your system Python.
-      </p>
-      {#if !engine.python}
-        <p class="err">Python 3 wasn't found. Install it with your package manager, then restart Prospack.</p>
+      {#if engine.canInstall}
+        <div class="kicker">Developer setup</div>
+        <h2>Install the compression engine</h2>
+        <p>
+          This is a source checkout without the bundled engine. Prospack can set up <b>MkPFS {"1.1.0"}</b> in a private
+          Python environment in <span class="mono">{engine.dir}</span>, without touching your system Python.
+        </p>
+        {#if !engine.python}
+          <p class="err">Python 3 wasn't found. Install it, then restart Prospack.</p>
+        {:else}
+          <button class="btn primary" disabled={installing} onclick={onInstall}>
+            {installing ? "Installing…" : "Install MkPFS"}
+          </button>
+        {/if}
+        {#if installLog.length}
+          <pre class="mono">{installLog.slice(-6).join("\n")}</pre>
+        {/if}
       {:else}
-        <button class="btn primary" disabled={installing} onclick={onInstall}>
-          {installing ? "Installing…" : "Install MkPFS"}
-        </button>
-      {/if}
-      {#if installLog.length}
-        <pre class="mono">{installLog.slice(-6).join("\n")}</pre>
+        <div class="kicker err">Something's missing</div>
+        <h2>The compression engine isn't there</h2>
+        <p>
+          Prospack ships with its engine (<span class="mono">prospack-engine</span>), but it can't be found or started.
+          Antivirus software sometimes quarantines it. Reinstall Prospack, and allow it in your antivirus if needed.
+        </p>
       {/if}
     </section>
   {/if}
