@@ -93,7 +93,7 @@
       {#if job.status === "queued"}
         <div class="kicker">Queued</div>
         <h2>{ahead ? `Waiting for ${ahead} ${ahead === 1 ? "game" : "games"} ahead` : "Starting…"}</h2>
-        <p class="desc">{n(job.dump.fileCount)} files, {gb(job.dump.totalBytes)}. Packer handles one game at a time.</p>
+        <p class="desc">{n(job.dump.fileCount)} files, {gb(job.dump.totalBytes)}. Prospack handles one game at a time.</p>
         <div class="actions"><button class="btn ghost" onclick={onRemove}>Remove from queue</button></div>
       {:else if job.status === "ready"}
         <div class="kicker ok">Verified</div>

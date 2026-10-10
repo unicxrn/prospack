@@ -171,7 +171,7 @@
 
   {#if dragging && jobs.length}
     <div class="dropveil" transition:fade={{ duration: 150 }}>
-      <div><b>Drop to add to the queue</b><span>Packer only reads the dump folder</span></div>
+      <div><b>Drop to add to the queue</b><span>Prospack only reads the dump folder</span></div>
     </div>
   {/if}
 

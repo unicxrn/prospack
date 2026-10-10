@@ -21,7 +21,7 @@
   }
 
   async function browse() {
-    const p = await api.pickFolder("Where should Packer write images?");
+    const p = await api.pickFolder("Where should Prospack write images?");
     if (p) draft.outputDir = p;
   }
 
@@ -96,7 +96,7 @@
       <legend class="kicker">Behaviour</legend>
       <label class="toggle">
         <input type="checkbox" bind:checked={draft.autoUpload} /><span class="sw"></span>
-        <span><b>Upload when verified</b><small>Otherwise Packer stops after Verify and waits for you.</small></span>
+        <span><b>Upload when verified</b><small>Otherwise Prospack stops after Verify and waits for you.</small></span>
       </label>
       <label class="toggle">
         <input type="checkbox" bind:checked={draft.writeSmpHints} /><span class="sw"></span>
@@ -104,7 +104,7 @@
       </label>
       <label class="toggle">
         <input type="checkbox" bind:checked={draft.markGcValidated} /><span class="sw"></span>
-        <span><b>Show as validated in Game Compressor</b><small>Writes Game Compressor's validation record after Packer's own file-by-file check, with the original size and space saved.</small></span>
+        <span><b>Show as validated in Game Compressor</b><small>Writes Game Compressor's validation record after Prospack's own file-by-file check, with the original size and space saved.</small></span>
       </label>
       <label class="toggle">
         <input type="checkbox" bind:checked={draft.deleteLocalAfterUpload} /><span class="sw"></span>

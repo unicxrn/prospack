@@ -7,12 +7,11 @@
 
 <header class="bar" data-tauri-drag-region>
   <div class="mark" data-tauri-drag-region>
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-      <rect x="1.5" y="1.5" width="15" height="15" rx="4" stroke="currentColor" stroke-width="1.4" />
-      <path d="M5.5 6.5h7" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" />
-      <path d="M5.5 9.5h7M5.5 12.5h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+    <svg width="18" height="18" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+      <rect x="5" y="5" width="18" height="18" rx="4" stroke="currentColor" stroke-width="2" />
+      <path d="M10 14h8M14 10v8" stroke="#9b7bff" stroke-width="2" stroke-linecap="round" />
     </svg>
-    Packer
+    Prospack
   </div>
 
   <button class="conn" class:off={ps5 && !ps5.online} onclick={onSettings} title={ps5?.error ?? ""}>

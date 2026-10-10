@@ -14,11 +14,11 @@
       <div class="kicker">One-time setup</div>
       <h2>Install the compression engine</h2>
       <p>
-        Packer uses <b>MkPFS 1.1.0</b>, the same format Game Compressor builds on. It goes into a private Python
+        Prospack uses <b>MkPFS 1.1.0</b>, the same format Game Compressor builds on. It goes into a private Python
         environment in <span class="mono">{engine.dir}</span> and doesn't touch your system Python.
       </p>
       {#if !engine.python}
-        <p class="err">Python 3 wasn't found. Install it with your package manager, then restart Packer.</p>
+        <p class="err">Python 3 wasn't found. Install it with your package manager, then restart Prospack.</p>
       {:else}
         <button class="btn primary" disabled={installing} onclick={onInstall}>
           {installing ? "Installing…" : "Install MkPFS"}
@@ -36,7 +36,7 @@
       <path d="M20 18v9M15.5 22.5 20 18l4.5 4.5" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
     <h1>{dragging ? "Let go to add it" : "Drop a game dump here"}</h1>
-    <p>Or click to choose a folder, such as <span class="mono">PPSA01234-app</span>. Packer only reads it.</p>
+    <p>Or click to choose a folder, such as <span class="mono">PPSA01234-app</span>. Prospack only reads it.</p>
   </button>
 
   <ol class="steps reveal" style="animation-delay:.16s">

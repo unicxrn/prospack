@@ -160,7 +160,7 @@ pub fn write_hints(ftp: &mut Ftp, title_id: &str, backup_dir: &Path) -> Result<H
             // Some servers refuse to rename over an existing file.
             ftp.delete(&path).ok();
             let (dir, name) = path.rsplit_once('/').unwrap();
-            ftp.rename(&format!("{dir}/.{name}.packer-tmp"), &path)?;
+            ftp.rename(&format!("{dir}/.{name}.prospack-tmp"), &path)?;
         }
         res.changed.push(format!("{file}: {line}"));
     }
@@ -200,14 +200,14 @@ pub fn gc_record_json(r: &GcRecord, now: u64) -> String {
         "aprIndexed": r.apr_indexed,
         "amprHotSwapOptimized": false,
         // Any status other than bad-blocks-found*, compression-stats or not-mounted reads as validated.
-        "status": "verified-by-packer",
+        "status": "verified-by-prospack",
         "nestedName": format!("{}.exfat", r.title_id),
         "repairedBlocks": 0,
-        "hashMode": "packer-file-compare",
+        "hashMode": "prospack-file-compare",
         "hashCheckedBlocks": 0,
         "hashMatchedBlocks": 0,
         "hashMismatchedBlocks": 0,
-        "verifiedBy": "Packer",
+        "verifiedBy": "Prospack",
         "verifiedFiles": r.files_verified,
         "updatedAt": now,
     });

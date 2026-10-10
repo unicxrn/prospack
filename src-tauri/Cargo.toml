@@ -1,11 +1,13 @@
 [package]
-name = "ps5-packer"
+name = "prospack"
 version = "0.1.0"
-description = "Compress, verify and upload PS5 game dumps"
+description = "Pack, verify and send PS5 dumps as .ffpfsc, from your PC"
+license = "GPL-3.0-only"
+repository = "https://github.com/unicxrn/prospack"
 edition = "2021"
 
 [lib]
-name = "ps5_packer_lib"
+name = "prospack_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

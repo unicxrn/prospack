@@ -1,6 +1,7 @@
 mod dump;
 mod engine;
 mod ftp;
+mod paths;
 mod pipeline;
 mod ps5;
 mod settings;
@@ -112,6 +113,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            paths::init(app.path().app_config_dir()?, app.path().app_data_dir()?);
+            settings::migrate_legacy();
             let handle = app.handle().clone();
             let emitter: Emitter = Arc::new(move |event, payload| {
                 let _ = handle.emit(event, payload);
@@ -146,5 +149,5 @@ pub fn run() {
             ps5_status
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Packer");
+        .expect("error while running Prospack");
 }

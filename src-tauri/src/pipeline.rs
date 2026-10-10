@@ -190,7 +190,7 @@ impl Queue {
             engine,
         };
         let worker = q.clone();
-        std::thread::Builder::new().name("packer-worker".into()).spawn(move || worker.run()).unwrap();
+        std::thread::Builder::new().name("prospack-worker".into()).spawn(move || worker.run()).unwrap();
         q
     }
 
@@ -595,7 +595,7 @@ impl Queue {
         let local_size = std::fs::metadata(&image).map_err(|e| format!("Image missing: {e}"))?.len();
         let dir = s.remote_dir.trim_end_matches('/').to_string();
         let final_remote = format!("{dir}/{title}.ffpfsc");
-        let tmp_remote = format!("{dir}/.{title}.ffpfsc.packer-part");
+        let tmp_remote = format!("{dir}/.{title}.ffpfsc.prospack-part");
 
         let mut ftp = ps5::connect(s)?;
         let others = ps5::competitors(&mut ftp, &dir, &title).unwrap_or_default();
@@ -619,7 +619,7 @@ impl Queue {
                 return Ok(());
             }
             return Err(format!(
-                "The PS5 already has a different {title}.ffpfsc ({}). Delete or rename it first; Packer never overwrites.",
+                "The PS5 already has a different {title}.ffpfsc ({}). Delete or rename it first; Prospack never overwrites.",
                 gb(existing)
             ));
         }
@@ -895,9 +895,9 @@ mod e2e {
     fn e2e_local_fake_ps5() {
         let scratch = PathBuf::from(std::env::var("PACKER_E2E_SCRATCH").expect("PACKER_E2E_SCRATCH"));
         let tmp = tempfile::tempdir().unwrap();
-        std::env::set_var("XDG_CONFIG_HOME", tmp.path().join("config"));
-        std::env::set_var("XDG_DATA_HOME", tmp.path().join("data"));
-        let engine_dir = tmp.path().join("data/ps5-packer/engine");
+        std::env::set_var("PROSPACK_CONFIG_DIR", tmp.path().join("config"));
+        std::env::set_var("PROSPACK_DATA_DIR", tmp.path().join("data"));
+        let engine_dir = tmp.path().join("data/engine");
         std::fs::create_dir_all(&engine_dir).unwrap();
         std::os::unix::fs::symlink(scratch.join("mkvenv"), engine_dir.join("venv")).unwrap();
 
@@ -950,7 +950,7 @@ mod e2e {
         let local = std::fs::metadata(j.image_path.as_ref().unwrap()).unwrap().len();
         let remote = ps5_root.join("data/homebrew/PPSA00001.ffpfsc");
         assert_eq!(std::fs::metadata(&remote).unwrap().len(), local);
-        assert!(!ps5_root.join("data/homebrew/.PPSA00001.ffpfsc.packer-part").exists());
+        assert!(!ps5_root.join("data/homebrew/.PPSA00001.ffpfsc.prospack-part").exists());
         let cfg = std::fs::read_to_string(ps5_root.join("data/shadowmount/config.ini")).unwrap();
         assert!(cfg.contains("image_ro=OTHER.exfat") && cfg.contains("image_ro=PPSA00001.exfat"), "{cfg}");
         let at = std::fs::read_to_string(ps5_root.join("data/shadowmount/autotune.ini")).unwrap();
@@ -1003,7 +1003,7 @@ mod e2e {
         q.remove(id3).unwrap();
         let good = std::fs::read(j4.image_path.as_ref().unwrap()).unwrap();
         std::fs::remove_file(&remote).unwrap();
-        let part = ps5_root.join("data/homebrew/.PPSA00001.ffpfsc.packer-part");
+        let part = ps5_root.join("data/homebrew/.PPSA00001.ffpfsc.prospack-part");
         std::fs::write(&part, &good[..good.len() / 2]).unwrap();
         let id5 = q.add(crate::dump::inspect(&dump).unwrap()).unwrap();
         let j5 = wait_until(&q, id5, 300);

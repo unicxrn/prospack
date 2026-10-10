@@ -264,7 +264,7 @@ impl Ftp {
     /// Writes a small file atomically: upload to a hidden temp name, then rename over.
     pub fn put_atomic(&mut self, path: &str, bytes: &[u8]) -> Result<(), String> {
         let (dir, name) = path.rsplit_once('/').ok_or("bad path")?;
-        let tmp = format!("{dir}/.{name}.packer-tmp");
+        let tmp = format!("{dir}/.{name}.prospack-tmp");
         // ftpsrv's STOR doesn't truncate before writing, so never write over a leftover temp file.
         if self.size(&tmp)?.is_some() {
             self.delete(&tmp)?;
