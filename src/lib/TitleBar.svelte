@@ -2,7 +2,7 @@
   import { api, isTauri } from "./api.js";
   import { gb } from "./format.js";
 
-  let { ps5, host, onSettings } = $props();
+  let { ps5, host, onSettings, onHelp } = $props();
 </script>
 
 <header class="bar" data-tauri-drag-region>
@@ -27,7 +27,10 @@
     {/if}
   </button>
 
-  <button class="iconbtn" aria-label="Settings" onclick={onSettings}>
+  <button class="iconbtn" aria-label="Help" title="Help (F1)" onclick={onHelp}>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.3" stroke="currentColor" stroke-width="1.3"/><path d="M6.2 6.3a1.9 1.9 0 0 1 3.7.4c0 1.2-1.9 1.5-1.9 2.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.4" r=".75" fill="currentColor"/></svg>
+  </button>
+  <button class="iconbtn" aria-label="Settings" title="Settings (Ctrl ,)" onclick={onSettings}>
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.5v1.8M8 12.7v1.8M14.5 8h-1.8M3.3 8H1.5M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3M12.6 12.6l-1.3-1.3M4.7 4.7L3.4 3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
   </button>
 

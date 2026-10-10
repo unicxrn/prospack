@@ -3,7 +3,7 @@
   import { api } from "./api.js";
   import { gb } from "./format.js";
 
-  let { settings, onClose, onSaved } = $props();
+  let { settings, onClose, onSaved, onRerunSetup } = $props();
   let draft = $state(structuredClone($state.snapshot(settings)));
   let testing = $state(false);
   let result = $state(null);
@@ -114,6 +114,7 @@
   </div>
 
   <footer>
+    <button class="btn ghost rerun" onclick={onRerunSetup}>Run setup again</button>
     <button class="btn ghost" onclick={onClose}>Cancel</button>
     <button class="btn primary" onclick={save} disabled={saving}>Save</button>
   </footer>
@@ -167,5 +168,6 @@
   .toggle input:checked + .sw::after { left: 14px; }
   .toggle input:focus-visible + .sw { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+  .rerun { margin-right: auto; }
   footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 24px; border-top: 1px solid var(--line); }
 </style>

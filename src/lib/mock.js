@@ -129,6 +129,7 @@ export const mock = {
   on: async (name, fn) => { (listeners[name] ||= []).push(fn); return () => {}; },
   pickFolder: async () => null,
   reveal: async () => {},
+  openUrl: async (url) => window.open(url, "_blank"),
   onDrop: async () => () => {},
   window: { minimize: async () => {}, toggleMaximize: async () => {}, close: async () => {} },
 };

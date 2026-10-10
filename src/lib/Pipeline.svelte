@@ -2,6 +2,12 @@
   import { STAGE_NAMES } from "./format.js";
   let { job } = $props();
 
+  const explain = {
+    compress: "Packs the dump into one compressed .ffpfsc image on this PC with MkPFS.",
+    verify: "Reads every file back out of the image and compares it with the dump, byte for byte. Nothing is uploaded unless this passes.",
+    upload: "Sends the image to the PS5 over FTP under a hidden name, then renames it. Resumes if interrupted; never overwrites.",
+    mount: "Adds the image to ShadowMountPlus (manual.lst + the same settings Game Compressor writes) and waits for it to mount.",
+  };
   const defaults = {
     compress: "MkPFS · exFAT in PFSC",
     verify: "Every file, byte for byte",
@@ -12,7 +18,7 @@
 
 <section class="pipe">
   {#each job.stages as s, i (s.key)}
-    <div class="stage {s.state}">
+    <div class="stage {s.state}" title={explain[s.key]}>
       <div class="top">
         <span class="idx">0{i + 1}</span>
         <span class="state">

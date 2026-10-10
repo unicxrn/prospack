@@ -40,6 +40,7 @@ export const api = isTauri
       on: async (name, fn) => (await tauri()).event.listen(name, (e) => fn(e.payload)),
       pickFolder: async (title) => (await tauri()).dialog.open({ directory: true, multiple: false, title }),
       reveal: async (path) => (await tauri()).opener.revealItemInDir(path),
+      openUrl: async (url) => (await tauri()).opener.openUrl(url),
       onDrop: async (fn) => (await tauri()).webview.getCurrentWebview().onDragDropEvent((e) => fn(e.payload)),
       window: {
         minimize: async () => (await tauri()).win.getCurrentWindow().minimize(),

@@ -11,6 +11,7 @@
   import EmptyState from "./lib/EmptyState.svelte";
   import Settings from "./lib/Settings.svelte";
   import Setup from "./lib/Setup.svelte";
+  import Help from "./lib/Help.svelte";
 
   let jobs = $state([]);
   let selected = $state(null);
@@ -19,6 +20,7 @@
   let engine = $state(null);
   let ps5 = $state(null);
   let showSettings = $state(false);
+  let showHelp = $state(false);
   let dragging = $state(false);
   let installing = $state(false);
   let installLog = $state([]);
@@ -94,6 +96,14 @@
     if (pickNow) setTimeout(pick, 250);
   }
 
+  async function rerunSetup() {
+    showHelp = false;
+    showSettings = false;
+    const next = { ...$state.snapshot(settings), setupDone: false };
+    await api.saveSettings(next);
+    settings = next;
+  }
+
   async function act(fn, id) {
     try {
       await fn(id);
@@ -132,6 +142,9 @@
       } else if ((e.ctrlKey || e.metaKey) && e.key === ",") {
         e.preventDefault();
         showSettings = true;
+      } else if (e.key === "F1" || ((e.ctrlKey || e.metaKey) && e.key === "/")) {
+        e.preventDefault();
+        showHelp = true;
       }
     };
     window.addEventListener("keydown", key);
@@ -144,7 +157,7 @@
 </script>
 
 <div class="app" class:empty={!jobs.length || inSetup} style:--accent={job?.dump.accent ?? "#3d7bff"}>
-  <TitleBar {ps5} host={settings?.ps5Host} onSettings={() => (showSettings = true)} />
+  <TitleBar {ps5} host={settings?.ps5Host} onSettings={() => (showSettings = true)} onHelp={() => (showHelp = true)} />
 
   {#if jobs.length && !inSetup}
     <Queue {jobs} {selected} {art} {ps5} onSelect={(id) => (selected = id)} onAdd={pick} />
@@ -196,7 +209,11 @@
   {/if}
 
   {#if showSettings && settings}
-    <Settings {settings} onClose={() => (showSettings = false)} onSaved={(s) => { settings = s; refreshPs5(); }} />
+    <Settings {settings} onClose={() => (showSettings = false)} onSaved={(s) => { settings = s; refreshPs5(); }} onRerunSetup={rerunSetup} />
+  {/if}
+
+  {#if showHelp}
+    <Help onClose={() => (showHelp = false)} onRerunSetup={rerunSetup} />
   {/if}
 </div>
 
