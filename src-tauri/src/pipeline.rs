@@ -815,10 +815,8 @@ fn is_interesting(l: &str) -> bool {
             || l.to_ascii_lowercase().contains("warning"))
 }
 
-fn free_space(p: &Path) -> Option<u64> {
-    let c = std::ffi::CString::new(p.to_string_lossy().as_bytes()).ok()?;
-    let mut st: libc::statvfs = unsafe { std::mem::zeroed() };
-    (unsafe { libc::statvfs(c.as_ptr(), &mut st) } == 0).then(|| st.f_bavail as u64 * st.f_frsize as u64)
+pub fn free_space(p: &Path) -> Option<u64> {
+    fs4::available_space(p).ok()
 }
 
 pub fn gb(b: u64) -> String {

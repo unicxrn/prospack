@@ -2,7 +2,6 @@
 
 use serde::Serialize;
 use std::io::Read;
-use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -44,14 +43,14 @@ impl Engine {
     }
 
     pub fn status(&self) -> EngineStatus {
-        let python = Command::new("python3")
+        let python = quiet("python3")
             .arg("--version")
             .output()
             .ok()
             .filter(|o| o.status.success())
             .map(|o| String::from_utf8_lossy(&o.stdout).trim().replace("Python ", ""));
         let mkpfs = if self.mkpfs_bin().is_file() {
-            Command::new(self.python_bin())
+            quiet(self.python_bin())
                 .args(["-c", "import importlib.metadata as m; print(m.version('mkpfs'))"])
                 .output()
                 .ok()
@@ -69,11 +68,11 @@ impl Engine {
         std::fs::create_dir_all(&self.root).map_err(|e| e.to_string())?;
         if !self.python_bin().is_file() {
             log("Creating Python environment".into());
-            run_logged(Command::new("python3").arg("-m").arg("venv").arg(self.venv()), log)?;
+            run_logged(quiet("python3").arg("-m").arg("venv").arg(self.venv()), log)?;
         }
         log(format!("Installing MkPFS {MKPFS_VERSION}"));
         run_logged(
-            Command::new(self.python_bin()).args([
+            quiet(self.python_bin()).args([
                 "-m",
                 "pip",
                 "install",
@@ -108,7 +107,7 @@ impl Engine {
     ) -> Result<(), String> {
         let tmp_dir = out.parent().unwrap().join("tmp");
         std::fs::create_dir_all(&tmp_dir).map_err(|e| e.to_string())?;
-        let mut cmd = Command::new(self.mkpfs_bin());
+        let mut cmd = quiet(self.mkpfs_bin());
         cmd.args(["pack", "folder", "--no-adjust-output-file-extension", "--ampr-skip-regen-if-exists"])
             .arg("--compression-level")
             .arg(level.min(9).to_string())
@@ -148,7 +147,7 @@ impl Engine {
         } else {
             workers
         };
-        let mut cmd = Command::new(self.python_bin());
+        let mut cmd = quiet(self.python_bin());
         cmd.arg(self.verifier()).arg(image).arg(src).arg(workers.to_string());
         let mut buf = String::new();
         let mut verdict: Option<bool> = None;
@@ -169,6 +168,55 @@ impl Engine {
         }
         verdict.ok_or_else(|| "The verifier stopped without a result".into())
     }
+}
+
+/// Puts the child in its own process group (Unix) / new process group without a console
+/// window (Windows), so Cancel can stop it and everything it spawned.
+fn detach_group(cmd: &mut Command) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW);
+    }
+}
+
+#[cfg(windows)]
+const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+/// Stops a process and its children. `force` escalates on Unix (SIGKILL after SIGTERM).
+fn kill_tree(pid: u32, force: bool) {
+    #[cfg(unix)]
+    unsafe {
+        libc::kill(-(pid as i32), if force { libc::SIGKILL } else { libc::SIGTERM });
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let _ = force;
+        let _ = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+    }
+}
+
+/// A command that won't flash a console window on Windows.
+fn quiet(program: impl AsRef<std::ffi::OsStr>) -> Command {
+    #[allow(unused_mut)]
+    let mut c = Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        c.creation_flags(CREATE_NO_WINDOW);
+    }
+    c
 }
 
 fn run_logged(cmd: &mut Command, log: &mut dyn FnMut(String)) -> Result<(), String> {
@@ -193,10 +241,10 @@ fn run_streaming(mut cmd: Command, cancel: &Arc<AtomicBool>, on: &mut dyn FnMut(
         .env("COLUMNS", "120")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .process_group(0);
+        .stderr(Stdio::piped());
+    detach_group(&mut cmd);
     let mut child = cmd.spawn().map_err(|e| format!("Couldn't start {:?}: {e}", cmd.get_program()))?;
-    let pgid = child.id() as i32;
+    let pid = child.id();
     let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
     let mut readers = Vec::new();
     for mut pipe in [
@@ -237,9 +285,7 @@ fn run_streaming(mut cmd: Command, cancel: &Arc<AtomicBool>, on: &mut dyn FnMut(
             Err(_) => break,
         }
         if !killed && cancel.load(Ordering::Relaxed) {
-            unsafe {
-                libc::kill(-pgid, libc::SIGTERM);
-            }
+            kill_tree(pid, false);
             killed = true;
         }
     }
@@ -248,9 +294,7 @@ fn run_streaming(mut cmd: Command, cancel: &Arc<AtomicBool>, on: &mut dyn FnMut(
     }
     let status = child.wait().map_err(|e| e.to_string())?;
     if killed {
-        unsafe {
-            libc::kill(-pgid, libc::SIGKILL);
-        }
+        kill_tree(pid, true);
     }
     Ok(status.success())
 }
