@@ -21,10 +21,15 @@ pub struct Ps5Status {
     pub free_bytes: Option<u64>,
     pub total_bytes: Option<u64>,
     pub shadowmount: bool,
+    /// /data/GameCompressor exists (optional; used for the validated badge).
+    pub game_compressor: bool,
 }
 
 pub fn connect(s: &Settings) -> Result<Ftp, String> {
-    Ftp::connect(&s.ps5_host, s.ftp_port, Duration::from_secs(4))
+    if s.ps5_host.trim().is_empty() {
+        return Err("No PS5 address set. Open Settings → Run setup again, or enter your PS5's IP in Settings.".into());
+    }
+    Ftp::connect(s.ps5_host.trim(), s.ftp_port, Duration::from_secs(4))
 }
 
 /// Read-only check: FTP login + NOOP, ShadowMountPlus config present, and free space from
@@ -35,14 +40,19 @@ pub fn status(s: &Settings) -> Ps5Status {
         Ok(f) => f,
         Err(e) => return Ps5Status { error: Some(e), ..Default::default() },
     };
+    // (connect() already rejects an empty address with a helpful message.)
     if let Err(e) = ftp.noop() {
         return Ps5Status { error: Some(e), ..Default::default() };
     }
     let latency_ms = Some(t0.elapsed().as_millis() as u64);
     let shadowmount = ftp.size(&format!("{SMP_DIR}/config.ini")).ok().flatten().is_some();
+    let game_compressor = ftp
+        .list("/data")
+        .map(|entries| entries.iter().any(|e| e.is_dir && e.name == "GameCompressor"))
+        .unwrap_or(false);
     ftp.quit();
     let (free_bytes, total_bytes) = space(s).unwrap_or((None, None));
-    Ps5Status { online: true, latency_ms, error: None, free_bytes, total_bytes, shadowmount }
+    Ps5Status { online: true, latency_ms, error: None, free_bytes, total_bytes, shadowmount, game_compressor }
 }
 
 /// GET /api/space?path=/data on the PS5 web file manager. Optional; a missing server is fine.

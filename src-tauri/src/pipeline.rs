@@ -950,6 +950,11 @@ mod e2e {
         };
         settings::save(&s).unwrap();
 
+        // Wizard checks against the fake PS5: ShadowMountPlus yes, Game Compressor not yet.
+        let st = ps5::status(&s);
+        assert!(st.online && st.shadowmount && !st.game_compressor, "{st:?}");
+        assert!(ps5::status(&Settings { ps5_host: "".into(), ..s.clone() }).error.unwrap().contains("No PS5 address set"));
+
         let engine = Arc::new(Engine::new(&settings::data_dir()));
         let q = Queue::new(Arc::new(|_, _| {}), engine);
         let id = q.add(crate::dump::inspect(&dump).unwrap()).unwrap();
@@ -979,6 +984,7 @@ mod e2e {
         assert_eq!(rec["sourceSize"], local);
         assert_eq!(rec["compressionSourceSize"], j.dump.total_bytes);
         assert!(ps5_root.join("data/GameCompressor/validations/PPSA00001.json").is_file());
+        assert!(ps5::status(&s).game_compressor, "the record created /data/GameCompressor");
         let ml = std::fs::read_to_string(ps5_root.join("data/shadowmount/manual.lst")).unwrap();
         assert_eq!(ml, "/data/homebrew/PPSA00001.ffpfsc\n");
         assert!(dump.join("ampr_emu.index").is_file(), "MkPFS should have generated the AMPR index");

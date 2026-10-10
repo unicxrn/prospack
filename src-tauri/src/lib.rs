@@ -108,6 +108,16 @@ async fn ps5_status(value: Option<settings::Settings>) -> Result<ps5::Ps5Status,
     blocking(move || ps5::status(&value.unwrap_or_else(settings::load))).await
 }
 
+/// Free space for the folder, or its nearest existing parent (the image folder may not exist yet).
+#[tauri::command]
+fn free_space(path: String) -> Option<u64> {
+    let mut p = PathBuf::from(path);
+    while !p.exists() {
+        p = p.parent()?.to_path_buf();
+    }
+    pipeline::free_space(&p)
+}
+
 #[tauri::command]
 async fn discover_ps5() -> Result<Vec<discover::Found>, String> {
     blocking(discover::discover).await
@@ -152,7 +162,8 @@ pub fn run() {
             remove_job,
             resume_job,
             ps5_status,
-            discover_ps5
+            discover_ps5,
+            free_space
         ])
         .run(tauri::generate_context!())
         .expect("error while running Prospack");

@@ -52,7 +52,9 @@ impl Ftp {
             .next()
             .ok_or_else(|| format!("Can't resolve {host}"))?;
         let stream = TcpStream::connect_timeout(&addr, connect_timeout)
-            .map_err(|e| format!("No FTP server at {host}:{port} ({e})"))?;
+            .map_err(|e| {
+                format!("Can't reach the PS5 at {host}:{port} ({e}). Check it's on, jailbroken, and running an FTP server.")
+            })?;
         stream.set_read_timeout(Some(TIMEOUT)).ok();
         stream.set_write_timeout(Some(TIMEOUT)).ok();
         stream.set_nodelay(true).ok();
