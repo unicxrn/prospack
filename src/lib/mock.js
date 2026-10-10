@@ -6,6 +6,7 @@ const now = () => Math.floor(Date.now() / 1000);
 const STAGES = ["compress", "verify", "upload", "mount"];
 
 let settings = {
+  setupDone: new URLSearchParams(location.search).has("setup") ? false : true,
   ps5Host: "192.168.0.50", ftpPort: 2121, webPort: 8888, remoteDir: "/data/homebrew",
   outputDir: "/home/you/PS5 Images", compressionLevel: 7, cpuCount: 0, verifyWorkers: 0,
   autoUpload: true, writeSmpHints: true, markGcValidated: true, deleteLocalAfterUpload: false,
@@ -122,7 +123,9 @@ export const mock = {
   cancelJob: async (id) => { const j = jobs.find((x) => x.id === id); if (j) { j.status = "cancelled"; j.stages[j.stage].state = "pending"; } emit("jobs", structuredClone(jobs)); },
   removeJob: async (id) => { jobs = jobs.filter((x) => x.id !== id); emit("jobs", structuredClone(jobs)); },
   resumeJob: async (id) => { const j = jobs.find((x) => x.id === id); if (j) { j.status = "running"; j.stages[j.stage].state = "live"; } emit("jobs", structuredClone(jobs)); },
-  ps5Status: async () => ({ online: true, latencyMs: 4, error: null, freeBytes: 631_629_479_936, totalBytes: 937_046_507_520, shadowmount: true }),
+  discoverPs5: async () => { await delay(1600); return [{ ip: "192.168.0.50", port: 2121, label: "ftpsrv v1.6.22", banner: "" }]; },
+  freeSpace: async () => 529_000_000_000,
+  ps5Status: async () => ({ online: true, latencyMs: 4, error: null, freeBytes: 631_629_479_936, totalBytes: 937_046_507_520, shadowmount: true, gameCompressor: true }),
   on: async (name, fn) => { (listeners[name] ||= []).push(fn); return () => {}; },
   pickFolder: async () => null,
   reveal: async () => {},

@@ -35,6 +35,8 @@ export const api = isTauri
       removeJob: (id) => call("remove_job", { id }),
       resumeJob: (id) => call("resume_job", { id }),
       ps5Status: (value) => call("ps5_status", { value: value ?? null }),
+      discoverPs5: () => call("discover_ps5"),
+      freeSpace: (path) => call("free_space", { path }),
       on: async (name, fn) => (await tauri()).event.listen(name, (e) => fn(e.payload)),
       pickFolder: async (title) => (await tauri()).dialog.open({ directory: true, multiple: false, title }),
       reveal: async (path) => (await tauri()).opener.revealItemInDir(path),

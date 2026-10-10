@@ -10,6 +10,7 @@
   import Activity from "./lib/Activity.svelte";
   import EmptyState from "./lib/EmptyState.svelte";
   import Settings from "./lib/Settings.svelte";
+  import Setup from "./lib/Setup.svelte";
 
   let jobs = $state([]);
   let selected = $state(null);
@@ -80,6 +81,19 @@
     }
   }
 
+  const inSetup = $derived(settings && !settings.setupDone);
+
+  async function setupDone(next, pickNow) {
+    try {
+      await api.saveSettings(next);
+    } catch (e) {
+      notify(String(e));
+    }
+    settings = next;
+    refreshPs5();
+    if (pickNow) setTimeout(pick, 250);
+  }
+
   async function act(fn, id) {
     try {
       await fn(id);
@@ -129,15 +143,17 @@
   });
 </script>
 
-<div class="app" class:empty={!jobs.length} style:--accent={job?.dump.accent ?? "#3d7bff"}>
+<div class="app" class:empty={!jobs.length || inSetup} style:--accent={job?.dump.accent ?? "#3d7bff"}>
   <TitleBar {ps5} host={settings?.ps5Host} onSettings={() => (showSettings = true)} />
 
-  {#if jobs.length}
+  {#if jobs.length && !inSetup}
     <Queue {jobs} {selected} {art} {ps5} onSelect={(id) => (selected = id)} onAdd={pick} />
   {/if}
 
   <main>
-    {#if job}
+    {#if inSetup}
+      <Setup {settings} onDone={setupDone} />
+    {:else if job}
       {#key job.id}
         <div class="page" in:fade={{ duration: 220 }}>
           <Hero {job} art={art[job.id]} />
