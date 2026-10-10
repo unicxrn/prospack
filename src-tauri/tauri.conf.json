@@ -62,7 +62,7 @@
       }
     },
     "category": "Utility",
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": false
   },
   "mainBinaryName": "prospack",
   "plugins": {

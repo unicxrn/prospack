@@ -72,6 +72,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
+          # Update files are only made (and signed) for official releases.
+          args: --config '{"bundle":{"createUpdaterArtifacts":true}}'
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
           tagName: ${{ github.ref_name }}
