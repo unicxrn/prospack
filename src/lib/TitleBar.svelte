@@ -1,8 +1,9 @@
 <script>
   import { api, isTauri } from "./api.js";
   import { gb } from "./format.js";
+  import { updates } from "./updates.svelte.js";
 
-  let { ps5, host, onSettings, onHelp } = $props();
+  let { ps5, host, onSettings, onHelp, onUpdate } = $props();
 </script>
 
 <header class="bar" data-tauri-drag-region>
@@ -29,6 +30,12 @@
     {/if}
   </button>
 
+  {#if updates.available}
+    <button class="update" onclick={onUpdate} title="Prospack {updates.available.version} is available">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1.5v6.5M3.2 5.4 6 8.2l2.8-2.8M2 10.5h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Update to {updates.available.version}
+    </button>
+  {/if}
   <button class="iconbtn" aria-label="Help" title="Help (F1)" onclick={onHelp}>
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.3" stroke="currentColor" stroke-width="1.3"/><path d="M6.2 6.3a1.9 1.9 0 0 1 3.7.4c0 1.2-1.9 1.5-1.9 2.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.4" r=".75" fill="currentColor"/></svg>
   </button>
@@ -74,6 +81,14 @@
   .unset .dot::after { display: none; }
   .off .dot::after { display: none; }
   @keyframes ping { 0% { transform: scale(0.4); opacity: 0.7; } 80%, 100% { transform: scale(1.4); opacity: 0; } }
+  .update {
+    display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 99px; cursor: pointer;
+    border: 1px solid color-mix(in srgb, #9b7bff 45%, transparent); background: color-mix(in srgb, #9b7bff 14%, transparent);
+    color: #d9ccff; font-size: 12px; font-weight: 500; animation: arrive 0.5s var(--ease);
+    transition: background 0.2s;
+  }
+  .update:hover { background: color-mix(in srgb, #9b7bff 24%, transparent); }
+  @keyframes arrive { from { opacity: 0; transform: translateY(-4px); } }
   .sep { width: 1px; height: 14px; background: var(--line-strong); }
   .win { display: flex; gap: 2px; margin-left: 6px; padding-left: 10px; border-left: 1px solid var(--line); }
   .close:hover { background: var(--err); color: #fff; }

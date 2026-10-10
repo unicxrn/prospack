@@ -12,6 +12,8 @@
   import Settings from "./lib/Settings.svelte";
   import Setup from "./lib/Setup.svelte";
   import Help from "./lib/Help.svelte";
+  import UpdateDialog from "./lib/UpdateDialog.svelte";
+  import { updates, startAutoCheck, installUpdate } from "./lib/updates.svelte.js";
 
   let jobs = $state([]);
   let selected = $state(null);
@@ -21,6 +23,9 @@
   let ps5 = $state(null);
   let showSettings = $state(false);
   let showHelp = $state(false);
+  let showUpdate = $state(false);
+  // Set when the user chose "Update when it's done" while a game was running.
+  let updateWhenIdle = $state(false);
   let dragging = $state(false);
   let installing = $state(false);
   let installLog = $state([]);
@@ -84,6 +89,15 @@
   }
 
   const inSetup = $derived(settings && !settings.setupDone);
+  const runningGame = $derived(jobs.find((j) => j.status === "running" || j.status === "queued")?.dump.titleName ?? null);
+
+  $effect(() => {
+    if (updateWhenIdle && !runningGame && updates.available?.canInstall && !updates.installing) {
+      updateWhenIdle = false;
+      showUpdate = true;
+      installUpdate();
+    }
+  });
 
   async function setupDone(next, pickNow) {
     try {
@@ -132,6 +146,7 @@
         })
       );
       refreshPs5();
+      offs.push(startAutoCheck(() => settings?.checkUpdates !== false));
     })();
     // A running upload already proves the link; poll less to keep FTP free.
     const t = setInterval(() => !jobs.some((j) => j.status === "running" && j.stage >= 2) && refreshPs5(), 20000);
@@ -157,7 +172,7 @@
 </script>
 
 <div class="app" class:empty={!jobs.length || inSetup} style:--accent={job?.dump.accent ?? "#9b7bff"}>
-  <TitleBar {ps5} host={settings?.ps5Host} onSettings={() => (showSettings = true)} onHelp={() => (showHelp = true)} />
+  <TitleBar {ps5} host={settings?.ps5Host} onSettings={() => (showSettings = true)} onHelp={() => (showHelp = true)} onUpdate={() => (showUpdate = true)} />
 
   {#if jobs.length && !inSetup}
     <Queue {jobs} {selected} {art} {ps5} onSelect={(id) => (selected = id)} onAdd={pick} />
@@ -212,8 +227,12 @@
     <Settings {settings} onClose={() => (showSettings = false)} onSaved={(s) => { settings = s; refreshPs5(); }} onRerunSetup={rerunSetup} />
   {/if}
 
+  {#if showUpdate && updates.available}
+    <UpdateDialog busyGame={runningGame} pending={updateWhenIdle} onPending={() => (updateWhenIdle = true)} onClose={() => (showUpdate = false)} />
+  {/if}
+
   {#if showHelp}
-    <Help onClose={() => (showHelp = false)} onRerunSetup={rerunSetup} />
+    <Help onClose={() => (showHelp = false)} onRerunSetup={rerunSetup} onShowUpdate={() => { showHelp = false; showUpdate = true; }} />
   {/if}
 </div>
 

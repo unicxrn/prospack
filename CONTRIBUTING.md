@@ -68,9 +68,23 @@ The ShadowMountPlus details:
 - It ignores dot-files, which is why uploads use `.<TITLE>.ffpfsc.prospack-part`.
 - It only reliably notices a new image when `manual.lst` changes.
 
+## Updates and signing
+
+Prospack updates itself with Tauri's updater. It reads `latest.json` from the latest
+published GitHub release and only installs files signed with the project's private key.
+The public key is in `src-tauri/tauri.conf.json`.
+
+- `npm run tauri dev` and `npx tauri build --no-bundle` don't need the key.
+- A full `npx tauri build` makes update files, so it needs the key in the environment:
+  `TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/prospack.key)"`. If you don't have the key,
+  add `--config '{"bundle":{"createUpdaterArtifacts":false}}'` to build without update files.
+- The release workflow reads the key from the `TAURI_SIGNING_PRIVATE_KEY` repository secret.
+- A `.deb` install can't replace itself. Those users are pointed at the release page instead.
+
 ## Releases
 
-Push a tag such as `v0.1.0`. `.github/workflows/release.yml` builds Linux and Windows,
+Bump the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`,
+then push a tag such as `v0.1.0`. `.github/workflows/release.yml` builds Linux and Windows,
 runs the tests (including the end-to-end tests with the frozen engine), builds Prospack
 Setup, smoke-tests an unattended install and uninstall on Windows, and creates a **draft**
 release for you to check and publish.

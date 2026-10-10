@@ -107,6 +107,10 @@
         <span><b>Show as validated in Game Compressor</b><small>Writes Game Compressor's validation record after Prospack's own file-by-file check, with the original size and space saved.</small></span>
       </label>
       <label class="toggle">
+        <input type="checkbox" bind:checked={draft.checkUpdates} /><span class="sw"></span>
+        <span><b>Check for updates</b><small>Looks for a new Prospack release when it starts and every six hours. Nothing installs without you clicking it.</small></span>
+      </label>
+      <label class="toggle">
         <input type="checkbox" bind:checked={draft.deleteLocalAfterUpload} /><span class="sw"></span>
         <span><b>Delete the local image after it mounts</b><small>Only once ShadowMountPlus has confirmed the mount.</small></span>
       </label>

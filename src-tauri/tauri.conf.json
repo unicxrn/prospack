@@ -61,7 +61,19 @@
         "depends": []
       }
     },
-    "category": "Utility"
+    "category": "Utility",
+    "createUpdaterArtifacts": true
   },
-  "mainBinaryName": "prospack"
+  "mainBinaryName": "prospack",
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU0OUJGQkQ3MUQ5QTZGREIKUldUYmI1b2QxL3ViNU1TY1NXUnh6YkhZQXpPczgyd1hTUHlWdlpHN2JJeGNDdmRZZThrU3FzR0sK",
+      "endpoints": [
+        "https://github.com/unicxrn/prospack/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
 }

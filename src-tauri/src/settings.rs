@@ -27,6 +27,8 @@ pub struct Settings {
     pub delete_local_after_upload: bool,
     /// The first-run wizard has been completed (or skipped).
     pub setup_done: bool,
+    /// Look for a new Prospack release at startup and every few hours.
+    pub check_updates: bool,
 }
 
 impl Default for Settings {
@@ -45,6 +47,7 @@ impl Default for Settings {
             mark_gc_validated: true,
             delete_local_after_upload: false,
             setup_done: false,
+            check_updates: true,
         }
     }
 }

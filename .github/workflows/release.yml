@@ -12,6 +12,8 @@ jobs:
   build:
     strategy:
       fail-fast: false
+      # One at a time, so the two jobs don't race to write latest.json (the updater feed).
+      max-parallel: 1
       matrix:
         os: [ubuntu-22.04, windows-latest]
     runs-on: ${{ matrix.os }}
@@ -65,7 +67,13 @@ jobs:
 
       - name: Build and draft the release
         uses: tauri-apps/tauri-action@v0
+        env:
+          # Signs the update files. The public half is in src-tauri/tauri.conf.json.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
           tagName: ${{ github.ref_name }}
           releaseName: Prospack ${{ github.ref_name }}
           releaseBody: |

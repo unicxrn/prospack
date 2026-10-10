@@ -2,8 +2,16 @@
   import { onMount } from "svelte";
   import { fade, fly } from "svelte/transition";
   import { api, isTauri } from "./api.js";
+  import { updates, checkForUpdates } from "./updates.svelte.js";
 
-  let { onClose, onRerunSetup } = $props();
+  let { onClose, onRerunSetup, onShowUpdate } = $props();
+  let checkedHere = $state(false);
+
+  async function check() {
+    await checkForUpdates();
+    checkedHere = true;
+    if (updates.available) onShowUpdate();
+  }
   let version = $state("dev");
   const REPO = "https://github.com/unicxrn/prospack";
 
@@ -128,6 +136,14 @@
         <button class="link" onclick={() => open("https://github.com/juma-sayeh/PS5-Game-Compressor")}>Game Compressor</button> and
         <button class="link" onclick={() => open("https://github.com/ps5-payload-dev/ftpsrv")}>ftpsrv</button>. Thanks to their authors.
       </p>
+      <div class="upd">
+        <button class="btn" onclick={check} disabled={updates.checking}>{updates.checking ? "Checking…" : "Check for updates"}</button>
+        {#if checkedHere && !updates.checking}
+          <span class:err={updates.lastError}>
+            {#if updates.lastError}Couldn't check: {updates.lastError}{:else if updates.available}Prospack {updates.available.version} is available.{:else}You're on the latest version.{/if}
+          </span>
+        {/if}
+      </div>
       <p class="credits">Only use dumps of games you own.</p>
     </section>
   </div>
@@ -163,4 +179,6 @@
   .link { background: none; border: 0; color: var(--text); text-decoration: underline; text-decoration-color: var(--line-strong); cursor: pointer; padding: 0; font: inherit; }
   .link:hover { text-decoration-color: currentColor; }
   .credits { font-size: 12.5px; }
+  .upd { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+  .upd .err { color: var(--err); }
 </style>

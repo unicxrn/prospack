@@ -9,7 +9,7 @@ let settings = {
   setupDone: new URLSearchParams(location.search).has("setup") ? false : true,
   ps5Host: "192.168.0.50", ftpPort: 2121, webPort: 8888, remoteDir: "/data/homebrew",
   outputDir: "/home/you/PS5 Images", compressionLevel: 7, cpuCount: 0, verifyWorkers: 0,
-  autoUpload: true, writeSmpHints: true, markGcValidated: true, deleteLocalAfterUpload: false,
+  autoUpload: true, writeSmpHints: true, markGcValidated: true, checkUpdates: true, deleteLocalAfterUpload: false,
 };
 
 const sample = {
@@ -125,6 +125,26 @@ export const mock = {
   resumeJob: async (id) => { const j = jobs.find((x) => x.id === id); if (j) { j.status = "running"; j.stages[j.stage].state = "live"; } emit("jobs", structuredClone(jobs)); },
   discoverPs5: async () => { await delay(1600); return [{ ip: "192.168.0.50", port: 2121, label: "ftpsrv v1.6.22", banner: "" }]; },
   freeSpace: async () => 529_000_000_000,
+  installKind: async () => new URLSearchParams(location.search).get("kind") ?? "appimage",
+  appVersion: async () => "0.1.0",
+  checkUpdate: async () => {
+    await delay(700);
+    if (!new URLSearchParams(location.search).has("update")) return null;
+    return {
+      version: "0.2.0",
+      body: "Faster verify on large dumps.\nThe wizard remembers manual IPs.\nFixes a crash when the image folder was on a removed drive.",
+      downloadAndInstall: async (onEvent) => {
+        const total = 42_000_000;
+        onEvent({ event: "Started", data: { contentLength: total } });
+        for (let got = 0; got < total; got += 1_400_000) {
+          await delay(60);
+          onEvent({ event: "Progress", data: { chunkLength: 1_400_000 } });
+        }
+        onEvent({ event: "Finished" });
+      },
+    };
+  },
+  relaunch: async () => location.reload(),
   ps5Status: async () => ({ online: true, latencyMs: 4, error: null, freeBytes: 631_629_479_936, totalBytes: 937_046_507_520, shadowmount: true, gameCompressor: true }),
   on: async (name, fn) => { (listeners[name] ||= []).push(fn); return () => {}; },
   pickFolder: async () => null,

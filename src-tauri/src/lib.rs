@@ -118,6 +118,19 @@ fn free_space(path: String) -> Option<u64> {
     pipeline::free_space(&p)
 }
 
+/// How this copy was installed, which decides whether it can update itself:
+/// "windows" and "appimage" can; "system" (a .deb or a source build) can't.
+#[tauri::command]
+fn install_kind() -> &'static str {
+    if cfg!(windows) {
+        "windows"
+    } else if std::env::var_os("APPIMAGE").is_some() {
+        "appimage"
+    } else {
+        "system"
+    }
+}
+
 #[tauri::command]
 async fn discover_ps5() -> Result<Vec<discover::Found>, String> {
     blocking(discover::discover).await
@@ -128,6 +141,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             paths::init(app.path().app_config_dir()?, app.path().app_data_dir()?);
             settings::migrate_legacy();
@@ -163,7 +178,8 @@ pub fn run() {
             resume_job,
             ps5_status,
             discover_ps5,
-            free_space
+            free_space,
+            install_kind
         ])
         .run(tauri::generate_context!())
         .expect("error while running Prospack");

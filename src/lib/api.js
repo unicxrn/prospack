@@ -6,15 +6,17 @@ export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in
 let real = null;
 async function tauri() {
   if (!real) {
-    const [core, event, dialog, opener, win, webview] = await Promise.all([
+    const [core, event, dialog, opener, win, webview, updater, process] = await Promise.all([
       import("@tauri-apps/api/core"),
       import("@tauri-apps/api/event"),
       import("@tauri-apps/plugin-dialog"),
       import("@tauri-apps/plugin-opener"),
       import("@tauri-apps/api/window"),
       import("@tauri-apps/api/webview"),
+      import("@tauri-apps/plugin-updater"),
+      import("@tauri-apps/plugin-process"),
     ]);
-    real = { core, event, dialog, opener, win, webview };
+    real = { core, event, dialog, opener, win, webview, updater, process };
   }
   return real;
 }
@@ -37,6 +39,11 @@ export const api = isTauri
       ps5Status: (value) => call("ps5_status", { value: value ?? null }),
       discoverPs5: () => call("discover_ps5"),
       freeSpace: (path) => call("free_space", { path }),
+      installKind: () => call("install_kind"),
+      appVersion: async () => (await import("@tauri-apps/api/app")).getVersion(),
+      // Returns the updater's Update object (or null). Throws if the update feed can't be read.
+      checkUpdate: async () => (await tauri()).updater.check(),
+      relaunch: async () => (await tauri()).process.relaunch(),
       on: async (name, fn) => (await tauri()).event.listen(name, (e) => fn(e.payload)),
       pickFolder: async (title) => (await tauri()).dialog.open({ directory: true, multiple: false, title }),
       reveal: async (path) => (await tauri()).opener.revealItemInDir(path),
