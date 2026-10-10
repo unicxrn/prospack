@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri
+            installer/src-tauri
+
+      - name: Frontend
+        run: |
+          npm ci
+          npm run build
+          (cd installer && npm ci && npm run build)
+
+      - name: Freeze the engine
+        run: |
+          python -m pip install -r engine/requirements-build.txt
+          python engine/build.py
+
+      - name: Engine smoke test (pack + verify)
+        run: |
+          python engine/make_fake_dump.py "$RUNNER_TEMP/smoke/PPSA00001-app"
+          ENGINE=$(ls src-tauri/binaries/prospack-engine-*)
+          "$ENGINE" --version
+          "$ENGINE" pack folder --no-adjust-output-file-extension --ampr-skip-regen-if-exists "$RUNNER_TEMP/smoke/PPSA00001-app" "$RUNNER_TEMP/smoke/out/PPSA00001.ffpfsc"
+          "$ENGINE" verify "$RUNNER_TEMP/smoke/out/PPSA00001.ffpfsc" "$RUNNER_TEMP/smoke/PPSA00001-app" 2 | tail -1 | grep '"ok": true'
+
+      - name: End-to-end scratch (fake PS5 + fake dump)
+        run: |
+          S="$RUNNER_TEMP/e2e"
+          python -m venv "$S/mkvenv"
+          if [ "$RUNNER_OS" = "Windows" ]; then PY="$S/mkvenv/Scripts/python.exe"; else PY="$S/mkvenv/bin/python"; fi
+          "$PY" -m pip install -r engine/requirements.txt pyftpdlib
+          cp tests/fake_ps5.py "$S/"
+          python engine/make_fake_dump.py "$S/fakedump/PPSA00001-app"
+          echo "PACKER_E2E_SCRATCH=$S" >> "$GITHUB_ENV"
+          echo "PROSPACK_ENGINE=$(cd src-tauri/binaries && pwd)/$(ls src-tauri/binaries | head -1)" >> "$GITHUB_ENV"
+
+      - name: App tests (unit + end-to-end)
+        run: cargo test --manifest-path src-tauri/Cargo.toml -- --include-ignored --skip discover_lan
+
+      - name: Setup app tests
+        run: cargo test --manifest-path installer/src-tauri/Cargo.toml
