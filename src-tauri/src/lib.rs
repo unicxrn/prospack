@@ -1,3 +1,4 @@
+mod discover;
 mod dump;
 mod engine;
 mod ftp;
@@ -107,6 +108,11 @@ async fn ps5_status(value: Option<settings::Settings>) -> Result<ps5::Ps5Status,
     blocking(move || ps5::status(&value.unwrap_or_else(settings::load))).await
 }
 
+#[tauri::command]
+async fn discover_ps5() -> Result<Vec<discover::Found>, String> {
+    blocking(discover::discover).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -145,7 +151,8 @@ pub fn run() {
             cancel_job,
             remove_job,
             resume_job,
-            ps5_status
+            ps5_status,
+            discover_ps5
         ])
         .run(tauri::generate_context!())
         .expect("error while running Prospack");
