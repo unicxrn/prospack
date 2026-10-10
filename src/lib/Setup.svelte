@@ -256,7 +256,6 @@
   .req li { display: flex; gap: 10px; align-items: center; color: var(--muted); }
   .req li::before { content: ""; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--faint); flex: none; }
   .tips li { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; color: var(--muted); }
-  .tips b { color: var(--text); font-weight: 500; }
   kbd { font: 500 11px var(--mono); border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 5px; color: var(--text); }
 
   .scan { height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; position: relative; margin-top: 8px; }

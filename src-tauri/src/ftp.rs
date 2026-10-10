@@ -181,7 +181,15 @@ impl Ftp {
 
     /// Downloads a (small) file. `Ok(None)` when it doesn't exist.
     pub fn retr(&mut self, path: &str) -> Result<Option<Vec<u8>>, String> {
+        self.retr_from(path, 0)
+    }
+
+    /// Downloads a file starting at byte `offset` (used to read only the new end of a log).
+    pub fn retr_from(&mut self, path: &str, offset: u64) -> Result<Option<Vec<u8>>, String> {
         let mut data = self.pasv()?;
+        if offset > 0 {
+            self.expect(&format!("REST {offset}"), &[350])?;
+        }
         let r = self.cmd(&format!("RETR {path}"))?;
         if r.code == 550 {
             return Ok(None);

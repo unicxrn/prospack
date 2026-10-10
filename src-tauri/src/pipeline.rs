@@ -758,25 +758,35 @@ impl Queue {
         };
         let started = Instant::now();
         let mut last = Instant::now();
-        let mounted = ps5::wait_for_mount(s, &title, &remote, Duration::from_secs(MOUNT_WAIT_SECS), cancel, &mut |secs| {
+        let outcome = ps5::wait_for_mount(s, &title, &remote, Duration::from_secs(MOUNT_WAIT_SECS), cancel, &mut |secs| {
             self.progress(id, &mut last, started, |j| {
                 j.pct = (secs as f64 / MOUNT_WAIT_SECS as f64 * 100.0).min(99.0);
                 j.stages[3].meta = format!("Waiting for ShadowMountPlus · {secs}s");
             });
         })?;
+        let mounted = outcome == ps5::MountOutcome::Registered;
         self.with(id, |j| {
-            if mounted {
-                j.warnings.retain(|w| !w.starts_with("ShadowMountPlus hasn't mounted"));
-                j.stages[3].meta = "Mounted by ShadowMountPlus".into();
-                j.log("ok", "ShadowMountPlus mounted the image. It's ready to play.");
-            } else {
-                j.stages[3].state = StageState::Warn;
-                j.stages[3].meta = "Not confirmed within 5 minutes".into();
-                j.warnings.push(
-                    "ShadowMountPlus hasn't mounted the image yet. The game may still show up; use Check again, or restart ShadowMountPlus."
-                        .into(),
-                );
-                j.log("warn", "Mount not confirmed within 5 minutes");
+            j.warnings.retain(|w| !w.starts_with("ShadowMountPlus"));
+            match &outcome {
+                ps5::MountOutcome::Registered => {
+                    j.stages[3].meta = "Mounted by ShadowMountPlus".into();
+                    j.log("ok", "ShadowMountPlus registered the game. It's ready to play.");
+                }
+                ps5::MountOutcome::Failed(reason) => {
+                    j.stages[3].state = StageState::Warn;
+                    j.stages[3].meta = "ShadowMountPlus couldn't register it".into();
+                    j.warnings.push(reason.clone());
+                    j.log("warn", reason.clone());
+                }
+                ps5::MountOutcome::Unconfirmed => {
+                    j.stages[3].state = StageState::Warn;
+                    j.stages[3].meta = "Not confirmed within 5 minutes".into();
+                    j.warnings.push(
+                        "ShadowMountPlus hasn't registered the game yet. It may still appear; use Check again, or restart ShadowMountPlus."
+                            .into(),
+                    );
+                    j.log("warn", "Mount not confirmed within 5 minutes");
+                }
             }
         });
         if mounted && s.delete_local_after_upload {
@@ -1030,5 +1040,21 @@ mod e2e {
         assert!(j5.log.iter().any(|l| l.text.starts_with("Resuming at")), "should resume");
         assert_eq!(std::fs::read(&remote).unwrap(), good, "resumed upload must be byte-identical");
         assert!(!part.exists());
+
+        // ShadowMountPlus with a lost ShellCore hook: it writes mount_img.lnk but can't register
+        // the game. That must end as a warning with the reason, never as "Ready to play".
+        q.remove(id5).unwrap();
+        std::fs::write(ps5_root.join("data/shadowmount/.broken-hook"), b"").unwrap();
+        let dump2 = tmp.path().join("PPSA00002-app");
+        copy_dir(&dump, &dump2);
+        let param = dump2.join("sce_sys/param.json");
+        let p = std::fs::read_to_string(&param).unwrap().replace("PPSA00001", "PPSA00002");
+        std::fs::write(&param, p).unwrap();
+        let id6 = q.add(crate::dump::inspect(&dump2).unwrap()).unwrap();
+        let j6 = wait_until(&q, id6, 300);
+        assert_eq!(j6.status, JobStatus::Done, "error: {:?}", j6.error);
+        assert_eq!(j6.stages[3].state, StageState::Warn, "must not report a mount that failed");
+        assert!(j6.warnings.iter().any(|w| w.contains("system hook was lost")), "{:?}", j6.warnings);
+        assert!(ps5_root.join("user/app/PPSA00002/mount_img.lnk").is_file(), "the stale link exists, as on a real PS5");
     }
 }

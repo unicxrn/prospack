@@ -276,7 +276,78 @@ pub fn request_scan(ftp: &mut Ftp, title_id: &str, image: &str, backup_dir: Opti
     Ok(changed)
 }
 
-/// Polls `/user/app/<TITLE>/mount_img.lnk` until ShadowMountPlus records the image.
+/// How a mount attempt ended.
+#[derive(Debug, Clone, PartialEq)]
+pub enum MountOutcome {
+    /// ShadowMountPlus mounted and registered the game.
+    Registered,
+    /// ShadowMountPlus tried and gave up; the reason is ready to show the user.
+    Failed(String),
+    /// Nothing conclusive before the timeout.
+    Unconfirmed,
+}
+
+const SMP_LOG: &str = "/data/shadowmount/debug.log";
+
+/// True when manual.status says ShadowMountPlus installed this image. It writes that line
+/// only after the game is mounted *and* registered; the link files in /user/app are written
+/// before registration and stay behind when it fails, so they can't be trusted on their own.
+pub fn manual_status_installed(text: &str, title_id: &str, image: &str) -> bool {
+    text.lines().any(|l| {
+        let f: Vec<&str> = l.split('\t').collect();
+        f.len() >= 3 && f[0] == "installed" && f[1].eq_ignore_ascii_case(title_id) && f[2] == image
+    })
+}
+
+/// Looks through new ShadowMountPlus log lines for a registration failure of this title.
+pub fn register_failure(log: &str, title_id: &str) -> Option<String> {
+    let mut ours = false;
+    for line in log.lines() {
+        if line.contains("[ACTION]") {
+            // "Installing: Name (TITLE)" / "Remounting: Name": track whether the following lines are about us.
+            ours = line.contains(&format!("({title_id})"));
+            continue;
+        }
+        if ours && line.contains("AppInstallTitleDir bridge unavailable") {
+            return Some(
+                "ShadowMountPlus mounted the game but couldn't register it: its system hook was lost, which happens \
+                 after rest mode in ShadowMountPlus 1.7beta4 and older. Update ShadowMountPlus (1.7beta5 fixes it) or \
+                 restart it, then use Check again."
+                    .into(),
+            );
+        }
+        if ours && line.contains("sceAppInstUtilAppInstallTitleDir unavailable") {
+            return Some(
+                "ShadowMountPlus couldn't register the game (the PS5's install service wasn't available). Restart \
+                 ShadowMountPlus, then use Check again."
+                    .into(),
+            );
+        }
+        if line.contains("retry limit reached") && line.contains(&format!("({title_id})")) {
+            return Some(
+                "ShadowMountPlus gave up on the game after two attempts. Restart ShadowMountPlus, then use Check again. \
+                 Its log is /data/shadowmount/debug.log."
+                    .into(),
+            );
+        }
+        if ours {
+            if let Some(code) = line.split("[REG] FAIL: ").nth(1) {
+                return Some(format!(
+                    "The PS5 refused to register the game (error {}). Restart ShadowMountPlus and use Check again; \
+                     if it keeps failing, the dump may need a backport for your firmware.",
+                    code.trim()
+                ));
+            }
+        }
+    }
+    None
+}
+
+fn log_size(ftp: &mut Ftp) -> Option<u64> {
+    ftp.size(SMP_LOG).ok().flatten()
+}
+
+/// Waits until ShadowMountPlus has registered the image, it reports a failure, or `timeout`.
 pub fn wait_for_mount(
     s: &Settings,
     title_id: &str,
@@ -284,35 +355,53 @@ pub fn wait_for_mount(
     timeout: Duration,
     cancel: &std::sync::atomic::AtomicBool,
     tick: &mut dyn FnMut(u64),
-) -> Result<bool, String> {
+) -> Result<MountOutcome, String> {
     let start = Instant::now();
-    let link = format!("/user/app/{title_id}/mount_img.lnk");
+    let status_path = format!("{SMP_DIR}/manual.status");
+    // Only log lines written from now on are about this attempt.
+    let mut log_offset = connect(s).ok().and_then(|mut f| {
+        let n = log_size(&mut f);
+        f.quit();
+        n
+    });
     let mut last_nudge = Instant::now();
     while start.elapsed() < timeout {
-        if last_nudge.elapsed() >= Duration::from_secs(30) {
-            last_nudge = Instant::now();
-            if let Ok(mut ftp) = connect(s) {
-                let _ = request_scan(&mut ftp, title_id, image_remote, None);
-                ftp.quit();
-            }
-        }
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             return Err("Cancelled".into());
         }
         tick(start.elapsed().as_secs());
         if let Ok(mut ftp) = connect(s) {
-            if let Ok(Some(bytes)) = ftp.retr(&link) {
-                let text = String::from_utf8_lossy(&bytes);
-                if text.lines().any(|l| l.trim() == image_remote) {
+            if let Ok(Some(bytes)) = ftp.retr(&status_path) {
+                if manual_status_installed(&String::from_utf8_lossy(&bytes), title_id, image_remote) {
                     ftp.quit();
-                    return Ok(true);
+                    return Ok(MountOutcome::Registered);
                 }
+            }
+            if let Some(size) = log_size(&mut ftp) {
+                // The log rotates to debug.log.1 when it grows; start over from 0 then.
+                let from = match log_offset {
+                    Some(o) if o <= size => o,
+                    _ => 0,
+                };
+                if size > from {
+                    if let Ok(Some(new)) = ftp.retr_from(SMP_LOG, from) {
+                        if let Some(reason) = register_failure(&String::from_utf8_lossy(&new), title_id) {
+                            ftp.quit();
+                            return Ok(MountOutcome::Failed(reason));
+                        }
+                    }
+                }
+                log_offset = Some(log_offset.map_or(size, |o| if o <= size { o } else { 0 }));
+            }
+            if last_nudge.elapsed() >= Duration::from_secs(30) {
+                last_nudge = Instant::now();
+                let _ = request_scan(&mut ftp, title_id, image_remote, None);
             }
             ftp.quit();
         }
         std::thread::sleep(Duration::from_secs(3));
     }
-    Ok(false)
+    Ok(MountOutcome::Unconfirmed)
 }
 
 #[cfg(test)]
@@ -342,6 +431,35 @@ mod tests {
     fn unchanged_when_already_correct() {
         let before = "a=1\nimage_ro=PPSA01234.exfat\n";
         assert!(upsert_hint(before, &["image_ro", "image_rw"], &names(), Some("image_ro=PPSA01234.exfat")).is_none());
+    }
+
+    #[test]
+    fn manual_status_needs_installed_title_and_path() {
+        let st = "installed\tPPSA01234\t/data/homebrew/PPSA01234.ffpfsc\tSample Game\ndeleted\tPPSA05678\t/data/homebrew/PPSA05678.ffpfsc\tX\n";
+        assert!(manual_status_installed(st, "PPSA01234", "/data/homebrew/PPSA01234.ffpfsc"));
+        assert!(!manual_status_installed(st, "PPSA05678", "/data/homebrew/PPSA05678.ffpfsc"));
+        assert!(!manual_status_installed(st, "PPSA01234", "/data/homebrew/PPSA01234-app"));
+    }
+
+    #[test]
+    fn spots_the_lost_hook_failure_from_the_real_log() {
+        // Lines as ShadowMountPlus 1.7beta4 logged them when its hook was gone.
+        let log = "[01:45:13]   [ACTION] Installing: Super Meat Boy 3D (PPSA31162)\n\
+[01:45:17]   [LINK] mount_img.lnk created: /user/app/PPSA31162/mount_img.lnk -> /data/homebrew/PPSA31162.ffpfsc layers=2\n\
+[01:45:17]   [REG] internal AppInstallTitleDir bridge unavailable\n\
+[01:45:17] NOTIFY: Register failed: Super Meat Boy 3D (PPSA31162)\n";
+        assert!(register_failure(log, "PPSA31162").unwrap().contains("system hook was lost"));
+        assert_eq!(register_failure(log, "PPSA01234"), None, "another game's failure isn't ours");
+    }
+
+    #[test]
+    fn other_register_failures() {
+        let fail = "[ACTION] Installing: G (PPSA01234)\n[REG] FAIL: 0x80990015\n";
+        assert!(register_failure(fail, "PPSA01234").unwrap().contains("0x80990015"));
+        let gave_up = "[SKIP] mount/register retry limit reached (2/2): G (PPSA01234)\n";
+        assert!(register_failure(gave_up, "PPSA01234").unwrap().contains("gave up"));
+        let ok = "[ACTION] Installing: G (PPSA01234)\n[REG] Installed NEW!\n";
+        assert_eq!(register_failure(ok, "PPSA01234"), None);
     }
 
     #[test]

@@ -96,6 +96,13 @@ The image didn't match the dump, so nothing was uploaded. Use
 **Compress again**. If it keeps failing, copy the dump again; it may be incomplete or on a
 failing drive.
 
+#### ShadowMountPlus couldn't register the game
+
+The image is on the PS5, but ShadowMountPlus couldn't add it to the home screen. If the
+message mentions a lost system hook, that's a ShadowMountPlus 1.7beta4 (and older) bug
+after rest mode: update to 1.7beta5 or newer, or restart ShadowMountPlus, then use
+**Check again**.
+
 #### Mount not confirmed
 
 The image made it to the PS5, but ShadowMountPlus hadn't mounted

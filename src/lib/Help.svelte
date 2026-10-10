@@ -42,6 +42,13 @@
       ],
     },
     {
+      q: "ShadowMountPlus couldn't register the game",
+      a: [
+        "The image is on the PS5 and ShadowMountPlus mounted it, but it couldn't add the game to the home screen.",
+        "\"System hook was lost\" happens after rest mode in ShadowMountPlus 1.7beta4 and older. Update to 1.7beta5 or newer, or restart ShadowMountPlus, then use Check again.",
+      ],
+    },
+    {
       q: "Mount not confirmed",
       a: [
         "The image is on the PS5, but ShadowMountPlus hadn't mounted it within 5 minutes. It often shows up a bit later.",

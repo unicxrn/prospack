@@ -79,7 +79,7 @@
         {:else}
           <div class="idle">
             <span class="pulse"></span>
-            <span class="mono">Checking /user/app/{job.dump.titleId}/mount_img.lnk every 3 s</span>
+            <span class="mono">Waiting for ShadowMountPlus to register {job.dump.titleId}</span>
           </div>
         {/if}
       </div>
@@ -107,7 +107,7 @@
         </div>
       {:else if job.status === "done"}
         <div class="kicker ok">{job.stages[3].state === "warn" ? "Uploaded" : "Done"}</div>
-        <h2>{job.stages[3].state === "warn" ? "On the PS5, not mounted yet" : "Ready to play"}</h2>
+        <h2>{job.stages[3].state === "warn" ? "On the PS5, but not registered yet" : "Ready to play"}</h2>
         <dl class="stats wide">
           <div><dt>Original</dt><dd class="num">{gb(job.dump.totalBytes)}</dd></div>
           <div><dt>Image</dt><dd class="num">{gb(job.imageBytes)}</dd></div>
@@ -116,8 +116,8 @@
         </dl>
         {#if job.stages[3].state === "warn"}
           <p class="desc">
-            The image is on the PS5 and listed in ShadowMountPlus's manual.lst, but the mount wasn't confirmed in time.
-            It often appears a little later; check the game list on the PS5.
+            The image is on the PS5, but ShadowMountPlus hasn't registered the game. The note at the top says why. Once
+            you've fixed that (usually by restarting ShadowMountPlus), use Check again.
           </p>
         {/if}
         <div class="actions">

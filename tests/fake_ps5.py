@@ -11,23 +11,40 @@ cfg = os.path.join(root, "data/shadowmount/config.ini")
 if not os.path.exists(cfg):
     open(cfg, "w").write("# ShadowMountPlus\nmount_read_only=1\nimage_ro=OTHER.exfat\n")
     open(os.path.join(root, "data/shadowmount/autotune.ini"), "w").write("image_sector=PPSA00001.ffpfsc:4096\n")
+    open(os.path.join(root, "data/shadowmount/debug.log"), "w").write("[00:00:00] ShadowMount+ (fake)\n")
 
 def fake_smp():
+    """Mimics ShadowMountPlus 1.7: link files first, then registration, then manual.status.
+
+    Create data/shadowmount/.broken-hook to reproduce a lost ShellCore hook: the link files
+    are written but registration fails, so manual.status never says "installed".
+    """
+    smp = os.path.join(root, "data/shadowmount")
     hb = os.path.join(root, "data/homebrew")
+    done = set()
     while True:
-        # Like the real one in practice: new images are only picked up once manual.lst lists them.
         try:
-            listed = open(os.path.join(root, "data/shadowmount/manual.lst")).read().split()
+            listed = open(os.path.join(smp, "manual.lst")).read().split()
         except FileNotFoundError:
             listed = []
         for n in os.listdir(hb):
-            if n.endswith(".ffpfsc") and not n.startswith(".") and f"/data/homebrew/{n}" in listed:
-                tid = n[:9]
-                d = os.path.join(root, "user/app", tid); os.makedirs(d, exist_ok=True)
-                lnk = os.path.join(d, "mount_img.lnk")
-                if not os.path.exists(lnk):
-                    time.sleep(4)
-                    open(lnk, "w").write(f"/data/homebrew/{n}\n/mnt/shadowmnt/pfsc/{tid}_deadbeef/{tid}.exfat\n")
+            path = f"/data/homebrew/{n}"
+            if not n.endswith(".ffpfsc") or n.startswith(".") or path not in listed or path in done:
+                continue
+            done.add(path)
+            tid = n[:9]
+            time.sleep(4)
+            d = os.path.join(root, "user/app", tid); os.makedirs(d, exist_ok=True)
+            open(os.path.join(d, "mount_img.lnk"), "w").write(f"{path}\n/mnt/shadowmnt/pfsc/{tid}_deadbeef/{tid}.exfat\n")
+            with open(os.path.join(smp, "debug.log"), "a") as log:
+                log.write(f"[00:00:00]   [ACTION] Installing: Test Game ({tid})\n")
+                if os.path.exists(os.path.join(smp, ".broken-hook")):
+                    log.write("[00:00:04]   [REG] internal AppInstallTitleDir bridge unavailable\n")
+                    log.write(f"[00:00:04] NOTIFY: Register failed: Test Game ({tid})\n")
+                    continue
+                log.write("[00:00:04]   [REG] Installed NEW!\n")
+            with open(os.path.join(smp, "manual.status"), "a") as st:
+                st.write(f"installed\t{tid}\t{path}\tTest Game\n")
         time.sleep(1)
 threading.Thread(target=fake_smp, daemon=True).start()
 
