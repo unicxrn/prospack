@@ -1,7 +1,9 @@
 node_modules/
 dist/
-src-tauri/target/
-src-tauri/gen/
+target/
+gen/
+target-engine/
 public/mock/
 src-tauri/binaries/
-target-engine/
+installer/src-tauri/payload/
+*.bak
