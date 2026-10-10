@@ -14,6 +14,30 @@ pub struct Ftp {
     peer: SocketAddr,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Entry {
+    pub name: String,
+    pub size: u64,
+    pub is_dir: bool,
+}
+
+fn parse_list_line(line: &str) -> Option<Entry> {
+    let mut rest = line.trim_end();
+    let mut fields = Vec::with_capacity(8);
+    // Peel off the first 8 whitespace-separated fields; the remainder is the name (may contain spaces).
+    for _ in 0..8 {
+        rest = rest.trim_start();
+        let end = rest.find(char::is_whitespace)?;
+        fields.push(&rest[..end]);
+        rest = &rest[end..];
+    }
+    let name = rest.trim_start();
+    if name.is_empty() || name == "." || name == ".." {
+        return None;
+    }
+    Some(Entry { name: name.to_string(), size: fields[4].parse().ok()?, is_dir: fields[0].starts_with('d') })
+}
+
 #[derive(Debug)]
 pub struct Reply {
     pub code: u16,
@@ -99,9 +123,21 @@ impl Ftp {
         self.expect("NOOP", &[200]).map(|_| ())
     }
 
+    /// Size of a file, or `None` if it doesn't exist.
+    ///
+    /// Some ftpsrv builds answer SIZE for a missing file with `213 18446744073709551615` (-1), so
+    /// existence comes from a directory listing; SIZE is only a fallback when LIST fails.
     pub fn size(&mut self, path: &str) -> Result<Option<u64>, String> {
+        let (dir, name) = match path.rsplit_once('/') {
+            Some(("", n)) => ("/", n),
+            Some((d, n)) => (d, n),
+            None => (".", path),
+        };
+        if let Ok(entries) = self.list(dir) {
+            return Ok(entries.into_iter().find(|e| !e.is_dir && e.name == name).map(|e| e.size));
+        }
         let r = self.cmd(&format!("SIZE {path}"))?;
-        Ok(if r.code == 213 { r.text.trim().parse().ok() } else { None })
+        Ok(if r.code == 213 { r.text.trim().parse::<u64>().ok().filter(|n| *n < (1 << 62)) } else { None })
     }
 
     pub fn rename(&mut self, from: &str, to: &str) -> Result<(), String> {
@@ -153,6 +189,11 @@ impl Ftp {
 
     /// Names in a directory (via LIST, since NLST support varies). Hidden entries included.
     pub fn list_names(&mut self, path: &str) -> Result<Vec<(String, bool)>, String> {
+        Ok(self.list(path)?.into_iter().map(|e| (e.name, e.is_dir)).collect())
+    }
+
+    /// Parsed Unix-style LIST: `perms links owner group size month day time name`.
+    pub fn list(&mut self, path: &str) -> Result<Vec<Entry>, String> {
         let mut data = self.pasv()?;
         let r = self.cmd(&format!("LIST {path}"))?;
         if r.code == 550 {
@@ -165,18 +206,7 @@ impl Ftp {
         data.read_to_string(&mut raw).map_err(|e| e.to_string())?;
         drop(data);
         self.read_reply()?;
-        Ok(raw
-            .lines()
-            .filter_map(|l| {
-                let parts: Vec<&str> = l.splitn(9, char::is_whitespace).filter(|p| !p.is_empty()).collect();
-                // Unix-style listing: perms links owner group size month day time name
-                let name = l.split_whitespace().skip(8).collect::<Vec<_>>().join(" ");
-                if parts.is_empty() || name.is_empty() || name == "." || name == ".." {
-                    return None;
-                }
-                Some((name, l.starts_with('d')))
-            })
-            .collect())
+        Ok(raw.lines().filter_map(parse_list_line).collect())
     }
 
     /// Uploads `src` to `path`, appending from `offset` when the server already has a prefix.
@@ -236,5 +266,24 @@ impl Ftp {
 
     pub fn quit(mut self) {
         let _ = self.cmd("QUIT");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_ftpsrv_listing() {
+        assert_eq!(
+            parse_list_line("-rw-rw-rw- 1 0 0 71733805056 Oct 10 13:53 PPSA05678.ffpfsc"),
+            Some(Entry { name: "PPSA05678.ffpfsc".into(), size: 71733805056, is_dir: false })
+        );
+        assert_eq!(
+            parse_list_line("drwxrwxrwx 2 0 0 65536 Oct 09 19:48 My Game  Folder"),
+            Some(Entry { name: "My Game  Folder".into(), size: 65536, is_dir: true })
+        );
+        assert_eq!(parse_list_line("drwxrwxrwx 2 0 0 65536 Oct 10 15:53 ."), None);
+        assert_eq!(parse_list_line("total 3"), None);
     }
 }

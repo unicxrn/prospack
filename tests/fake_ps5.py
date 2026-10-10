@@ -33,6 +33,12 @@ class Ps5Handler(FTPHandler):
         if cmd in ("RNTO", "DELE") and resp.startswith("250"):
             resp = "226" + resp[3:]
         return super().respond(resp) if logfun is None else super().respond(resp, logfun)
+    def ftp_SIZE(self, path):
+        # Mimic ftpsrv v1.6.22: a missing file reports size -1 instead of 550.
+        if not self.fs.isfile(path):
+            self.respond("213 18446744073709551615")
+            return
+        return super().ftp_SIZE(path)
     def pre_process_command(self, line, cmd, arg):
         self._last_cmd = cmd
         return super().pre_process_command(line, cmd, arg)
