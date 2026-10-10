@@ -42,7 +42,11 @@
   {#if job.status === "running"}
     <div class="left">
       <div class="kicker">Step {job.stage + 1} of 4 · {STAGE_NAMES[stageKey]}</div>
-      <div class="big num">{shown.toFixed(1)}<small>%</small></div>
+      {#if stageKey === "mount"}
+        <div class="big num">{clock(job.stageSecs)}<small>of 2:00</small></div>
+      {:else}
+        <div class="big num">{shown.toFixed(1)}<small>%</small></div>
+      {/if}
       <p class="desc">{description}</p>
       <div class="bigbar"><i style:width="{job.pct}%"></i></div>
       <dl class="stats">
@@ -73,7 +77,10 @@
         {#if job.rateLabel}
           <Sparkline values={job.rateHistory} color={job.dump.accent} />
         {:else}
-          <div class="idle mono">Polling the PS5 every 3 s</div>
+          <div class="idle">
+            <span class="pulse"></span>
+            <span class="mono">Checking /user/app/{job.dump.titleId}/mount_img.lnk every 3 s</span>
+          </div>
         {/if}
       </div>
       <div class="actions">
@@ -173,7 +180,11 @@
   .rate small { font-size: 13px; color: var(--muted); margin-left: 4px; }
   .src { color: var(--faint); }
   .spark { flex: 1; min-height: 110px; margin: 14px -4px 0; position: relative; }
-  .idle { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); }
+  .idle { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 18px; align-items: center; justify-content: center; color: var(--faint); text-align: center; }
+  .pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); position: relative; }
+  .pulse::before, .pulse::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 1px solid var(--accent); animation: ring 2.4s var(--ease) infinite; }
+  .pulse::after { animation-delay: 1.2s; }
+  @keyframes ring { from { transform: scale(1); opacity: 0.8; } to { transform: scale(5); opacity: 0; } }
   .actions { display: flex; gap: 8px; align-items: center; margin-top: 22px; }
   .saved { margin-left: auto; color: var(--muted); font-size: 12.5px; }
 

@@ -396,6 +396,7 @@ impl Queue {
             j.files_total = 0;
             j.rate = 0.0;
             j.rate_history.clear();
+            j.rate_label = "";
             j.eta_secs = None;
             j.stage_secs = 0;
             j.log("hl", format!("{} started", title_case(STAGES[stage])));
@@ -506,6 +507,11 @@ impl Queue {
         self.with(id, |j| {
             j.image_path = Some(final_path.to_string_lossy().into_owned());
             j.image_bytes = Some(size);
+            if j.dump.apr && !j.dump.has_ampr_index && Path::new(&j.dump.path).join("ampr_emu.index").is_file() {
+                j.dump.has_ampr_index = true;
+                j.warnings.retain(|w| !w.contains("ampr_emu.index"));
+                j.log("", "MkPFS added ampr_emu.index to the dump folder");
+            }
             let saved = j.dump.total_bytes.saturating_sub(size);
             j.stages[0].meta = format!("{} → {} · {}", gb(j.dump.total_bytes), gb(size), dur(secs));
             j.log(
@@ -868,14 +874,21 @@ mod e2e {
         let _ = std::fs::remove_file(dump.join("ampr_emu.index"));
 
         let ps5_root = tmp.path().join("ps5");
-        let port = 22121;
-        let mut server = std::process::Command::new(scratch.join("mkvenv/bin/python"))
+        let port = 22000 + (std::process::id() % 1000) as u16;
+        struct KillOnDrop(std::process::Child);
+        impl Drop for KillOnDrop {
+            fn drop(&mut self) {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+        let _server = KillOnDrop(std::process::Command::new(scratch.join("mkvenv/bin/python"))
             .arg(scratch.join("fake_ps5.py"))
             .arg(&ps5_root)
             .arg(port.to_string())
             .stderr(std::process::Stdio::null())
             .spawn()
-            .unwrap();
+            .unwrap());
         std::thread::sleep(Duration::from_millis(1500));
 
         let s = Settings {
@@ -948,7 +961,5 @@ mod e2e {
         assert!(j5.log.iter().any(|l| l.text.starts_with("Resuming at")), "should resume");
         assert_eq!(std::fs::read(&remote).unwrap(), good, "resumed upload must be byte-identical");
         assert!(!part.exists());
-
-        server.kill().ok();
     }
 }

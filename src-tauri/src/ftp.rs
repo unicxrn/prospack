@@ -106,11 +106,12 @@ impl Ftp {
 
     pub fn rename(&mut self, from: &str, to: &str) -> Result<(), String> {
         self.expect(&format!("RNFR {from}"), &[350])?;
-        self.expect(&format!("RNTO {to}"), &[250]).map(|_| ())
+        // ftpsrv (the usual PS5 server) answers RNTO and DELE with 226 rather than 250.
+        self.expect(&format!("RNTO {to}"), &[250, 226]).map(|_| ())
     }
 
     pub fn delete(&mut self, path: &str) -> Result<(), String> {
-        self.expect(&format!("DELE {path}"), &[250]).map(|_| ())
+        self.expect(&format!("DELE {path}"), &[250, 226]).map(|_| ())
     }
 
     fn pasv(&mut self) -> Result<TcpStream, String> {
@@ -224,6 +225,10 @@ impl Ftp {
     pub fn put_atomic(&mut self, path: &str, bytes: &[u8]) -> Result<(), String> {
         let (dir, name) = path.rsplit_once('/').ok_or("bad path")?;
         let tmp = format!("{dir}/.{name}.packer-tmp");
+        // ftpsrv's STOR doesn't truncate before writing, so never write over a leftover temp file.
+        if self.size(&tmp)?.is_some() {
+            self.delete(&tmp)?;
+        }
         let never = AtomicBool::new(false);
         self.store(&tmp, &mut &bytes[..], 0, &never, &mut |_| {})?;
         self.rename(&tmp, path)
