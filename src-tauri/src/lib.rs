@@ -145,7 +145,6 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             paths::init(app.path().app_config_dir()?, app.path().app_data_dir()?);
-            settings::migrate_legacy();
             let handle = app.handle().clone();
             let emitter: Emitter = Arc::new(move |event, payload| {
                 let _ = handle.emit(event, payload);

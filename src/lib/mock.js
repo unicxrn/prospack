@@ -8,16 +8,16 @@ const STAGES = ["compress", "verify", "upload", "mount"];
 let settings = {
   setupDone: new URLSearchParams(location.search).has("setup") ? false : true,
   ps5Host: "192.168.0.50", ftpPort: 2121, webPort: 8888, remoteDir: "/data/homebrew",
-  outputDir: "/home/you/PS5 Images", compressionLevel: 7, cpuCount: 0, verifyWorkers: 0,
+  outputDir: "/home/you/Prospack Images", compressionLevel: 7, cpuCount: 0, verifyWorkers: 0,
   autoUpload: true, writeSmpHints: true, markGcValidated: true, checkUpdates: true, deleteLocalAfterUpload: false,
 };
 
 const sample = {
   path: "/games/PPSA01234-app", titleId: "PPSA01234", titleName: "Sample Game",
-  version: "01.019.000", fileCount: 166733, totalBytes: 159841147026, apr: true, hasAmprIndex: true, accent: "#3d7bff",
+  version: "01.004.000", fileCount: 166733, totalBytes: 159841147026, apr: true, hasAmprIndex: true, accent: "#7b5cff",
 };
-const flag = {
-  path: "/games/PPSA05678-app0", titleId: "PPSA05678", titleName: "Another Game",
+const another = {
+  path: "/games/PPSA05678-app", titleId: "PPSA05678", titleName: "Another Game",
   version: "01.000.000", fileCount: 299, totalBytes: 130982284503, apr: true, hasAmprIndex: true, accent: "#c9a46a",
 };
 
@@ -28,7 +28,7 @@ let jobs = [
   {
     id: 1, dump: sample, status: "running", stage: 1, stages: blankStages(), pct: 0, doneBytes: 0, totalBytes: 0,
     filesDone: 0, filesTotal: 166733, rate: 0, rateHistory: [], rateLabel: "verify", etaSecs: null, stageSecs: 0,
-    imagePath: "/home/you/PS5 Images/PPSA01234.ffpfsc", imageBytes: 91_700_000_000, remotePath: null, mismatches: 0,
+    imagePath: "/home/you/Prospack Images/PPSA01234.ffpfsc", imageBytes: 91_700_000_000, remotePath: null, mismatches: 0,
     problems: [], warnings: [], error: null,
     log: [
       log("Added " + sample.path, "hl"), log("Compress started", "hl"),
@@ -38,9 +38,9 @@ let jobs = [
     ],
   },
   {
-    id: 2, dump: flag, status: "done", stage: 3, stages: blankStages(), pct: 100, doneBytes: 0, totalBytes: 0,
+    id: 2, dump: another, status: "done", stage: 3, stages: blankStages(), pct: 100, doneBytes: 0, totalBytes: 0,
     filesDone: 0, filesTotal: 0, rate: 0, rateHistory: [], rateLabel: "", etaSecs: null, stageSecs: 0,
-    imagePath: "/home/you/PS5 Images/PPSA05678.ffpfsc", imageBytes: 71_733_805_056,
+    imagePath: "/home/you/Prospack Images/PPSA05678.ffpfsc", imageBytes: 71_733_805_056,
     remotePath: "/data/homebrew/PPSA05678.ffpfsc", mismatches: 0, problems: [], warnings: [], error: null,
     log: [log("Finished", "ok")],
   },
@@ -118,7 +118,7 @@ export const mock = {
   installEngine: async () => { for (const l of ["Creating Python environment", "Installing MkPFS 1.1.0"]) { emit("engine-log", l); await delay(500); } return mock.engineStatus(); },
   inspectDump: async () => { throw new Error("preview"); },
   addJob: async () => { throw "Adding dumps needs the desktop app (this is a browser preview)"; },
-  jobArt: async (path) => path.includes("SampleGame") ? { icon: "/mock/icon.jpg", hero: "/mock/pic0.jpg" } : { icon: null, hero: null },
+  jobArt: async () => ({ icon: null, hero: null }),
   listJobs: async () => structuredClone(jobs),
   cancelJob: async (id) => { const j = jobs.find((x) => x.id === id); if (j) { j.status = "cancelled"; j.stages[j.stage].state = "pending"; } emit("jobs", structuredClone(jobs)); },
   removeJob: async (id) => { jobs = jobs.filter((x) => x.id !== id); emit("jobs", structuredClone(jobs)); },

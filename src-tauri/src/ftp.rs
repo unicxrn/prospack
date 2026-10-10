@@ -288,8 +288,8 @@ mod tests {
     #[test]
     fn parses_ftpsrv_listing() {
         assert_eq!(
-            parse_list_line("-rw-rw-rw- 1 0 0 71733805056 Oct 10 13:53 PPSA05678.ffpfsc"),
-            Some(Entry { name: "PPSA05678.ffpfsc".into(), size: 71733805056, is_dir: false })
+            parse_list_line("-rw-rw-rw- 1 0 0 71733805056 Oct 10 13:53 PPSA01234.ffpfsc"),
+            Some(Entry { name: "PPSA01234.ffpfsc".into(), size: 71733805056, is_dir: false })
         );
         assert_eq!(
             parse_list_line("drwxrwxrwx 2 0 0 65536 Oct 09 19:48 My Game  Folder"),

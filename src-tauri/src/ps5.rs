@@ -346,23 +346,23 @@ mod tests {
 
     #[test]
     fn fnv_matches_game_compressor_file_names() {
-        // Names Game Compressor actually wrote on the console.
-        assert_eq!(format!("{:08x}", fnv1a32("/data/homebrew/PPSA05678.ffpfsc")), "17b59d6b");
+        // Same FNV-1a 32 Game Compressor uses for its validations/<TITLE>-<hash>.json names.
         assert_eq!(format!("{:08x}", fnv1a32("/data/homebrew/PPSA01234.ffpfsc")), "844067eb");
+        assert_eq!(format!("{:08x}", fnv1a32("/data/homebrew/PPSA05678.ffpfsc")), "17b59d6b");
     }
 
     #[test]
     fn gc_record_has_the_fields_gc_reads() {
         let r = GcRecord {
-            title_id: "PPSA09012",
-            image_remote: "/data/homebrew/PPSA09012.ffpfsc",
+            title_id: "PPSA01234",
+            image_remote: "/data/homebrew/PPSA01234.ffpfsc",
             image_bytes: 53_800_000_000,
             source_bytes: 86_900_000_000,
             apr_indexed: true,
             files_verified: 35,
         };
         let v: serde_json::Value = serde_json::from_str(&gc_record_json(&r, 1)).unwrap();
-        assert_eq!(v["path"], "/data/homebrew/PPSA09012.ffpfsc");
+        assert_eq!(v["path"], "/data/homebrew/PPSA01234.ffpfsc");
         assert_eq!(v["sourceSize"], 53_800_000_000u64);
         assert_eq!(v["compressionSavedBytes"], 33_100_000_000u64);
         assert_eq!(v["aprIndexed"], true);
@@ -372,13 +372,13 @@ mod tests {
 
     #[test]
     fn manual_list_replaces_same_title_entries() {
-        let before = "/data/homebrew/PPSA05678.ffpfsc\n/data/homebrew/PPSA09012-app\n\n/data/homebrew/PPSA090120.ffpfsc\n";
-        let after = manual_list_with(before, "PPSA09012", "/data/homebrew/PPSA09012.ffpfsc");
+        let before = "/data/homebrew/PPSA05678.ffpfsc\n/data/homebrew/PPSA01234-app\n\n/data/homebrew/PPSA012340.ffpfsc\n";
+        let after = manual_list_with(before, "PPSA01234", "/data/homebrew/PPSA01234.ffpfsc");
         assert_eq!(
             after,
-            "/data/homebrew/PPSA05678.ffpfsc\n/data/homebrew/PPSA090120.ffpfsc\n/data/homebrew/PPSA09012.ffpfsc\n"
+            "/data/homebrew/PPSA05678.ffpfsc\n/data/homebrew/PPSA012340.ffpfsc\n/data/homebrew/PPSA01234.ffpfsc\n"
         );
-        assert_eq!(manual_list_with("", "PPSA09012", "/x/PPSA09012.ffpfsc"), "/x/PPSA09012.ffpfsc\n");
+        assert_eq!(manual_list_with("", "PPSA01234", "/x/PPSA01234.ffpfsc"), "/x/PPSA01234.ffpfsc\n");
     }
 
     #[test]

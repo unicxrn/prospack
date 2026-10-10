@@ -32,12 +32,3 @@ pub fn data_dir() -> PathBuf {
         .or_else(|| DATA.get().cloned())
         .unwrap_or_else(|| home().join(".local/share/prospack"))
 }
-
-/// Where the app lived while it was called Packer (Linux only).
-pub fn legacy_config_dir() -> PathBuf {
-    home().join(".config/ps5-packer")
-}
-
-pub fn legacy_data_dir() -> PathBuf {
-    home().join(".local/share/ps5-packer")
-}
