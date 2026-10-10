@@ -9,7 +9,7 @@
 
   function sub(j) {
     switch (j.status) {
-      case "running": return { text: verbs[j.stages[j.stage].key], pct: Math.floor(j.pct) + "%" };
+      case "running": return { text: verbs[j.stages[j.stage].key], pct: j.stage === 3 ? null : Math.floor(j.pct) + "%" };
       case "queued": return { text: "Queued" };
       case "ready": return { text: "Verified · ready to upload", tone: "ok" };
       case "done": return { text: "On PS5", tone: "ok", pct: gb(j.imageBytes) };
