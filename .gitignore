@@ -7,3 +7,4 @@ public/mock/
 src-tauri/binaries/
 installer/src-tauri/payload/
 *.bak
+__pycache__/

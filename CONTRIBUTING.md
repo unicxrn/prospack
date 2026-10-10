@@ -42,7 +42,7 @@ fake PS5. They never touch a real console. They need a scratch folder containing
 - `fakedump/PPSA00001-app`: from `python engine/make_fake_dump.py <scratch>/fakedump/PPSA00001-app`.
 
 ```bash
-PACKER_E2E_SCRATCH=<scratch> PROSPACK_ENGINE=$PWD/binaries/prospack-engine-<triple> cargo test -- --include-ignored
+PROSPACK_E2E_SCRATCH=<scratch> PROSPACK_ENGINE=$PWD/binaries/prospack-engine-<triple> cargo test -- --include-ignored
 ```
 
 The scenarios covered are:

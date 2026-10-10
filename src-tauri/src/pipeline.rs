@@ -871,7 +871,7 @@ mod tests {
 }
 
 /// End-to-end run against a local fake PS5 (FTP + fake ShadowMountPlus). Never touches a real
-/// console. Run with: PACKER_E2E_SCRATCH=<dir with mkvenv, fake_ps5.py, fakedump> cargo test e2e -- --ignored
+/// console. Run with: PROSPACK_E2E_SCRATCH=<dir with mkvenv, fake_ps5.py, fakedump> cargo test e2e -- --ignored
 #[cfg(test)]
 mod e2e {
     use super::*;
@@ -903,7 +903,7 @@ mod e2e {
     #[test]
     #[ignore]
     fn e2e_local_fake_ps5() {
-        let scratch = PathBuf::from(std::env::var("PACKER_E2E_SCRATCH").expect("PACKER_E2E_SCRATCH"));
+        let scratch = PathBuf::from(std::env::var("PROSPACK_E2E_SCRATCH").expect("PROSPACK_E2E_SCRATCH"));
         let tmp = tempfile::tempdir().unwrap();
         std::env::set_var("PROSPACK_CONFIG_DIR", tmp.path().join("config"));
         std::env::set_var("PROSPACK_DATA_DIR", tmp.path().join("data"));

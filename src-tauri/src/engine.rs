@@ -508,12 +508,12 @@ mod tests {
 mod cancel_test {
     use super::*;
 
-    /// PACKER_E2E_SCRATCH=<dir with mkvenv> cargo test cancel -- --ignored
+    /// PROSPACK_E2E_SCRATCH=<dir with mkvenv> cargo test cancel -- --ignored
     #[test]
     #[ignore]
     #[cfg(unix)]
     fn cancel_kills_mkpfs_promptly() {
-        let scratch = PathBuf::from(std::env::var("PACKER_E2E_SCRATCH").unwrap());
+        let scratch = PathBuf::from(std::env::var("PROSPACK_E2E_SCRATCH").unwrap());
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path().join("engine");
         std::fs::create_dir_all(&root).unwrap();

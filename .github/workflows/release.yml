@@ -61,7 +61,7 @@ jobs:
           "$PY" -m pip install -r engine/requirements.txt pyftpdlib
           cp tests/fake_ps5.py "$S/"
           python engine/make_fake_dump.py "$S/fakedump/PPSA00001-app"
-          export PACKER_E2E_SCRATCH="$S"
+          export PROSPACK_E2E_SCRATCH="$S"
           export PROSPACK_ENGINE="$(cd src-tauri/binaries && pwd)/$(ls src-tauri/binaries | head -1)"
           cargo test --manifest-path src-tauri/Cargo.toml -- --include-ignored --skip discover_lan
 

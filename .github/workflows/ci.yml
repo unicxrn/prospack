@@ -65,7 +65,7 @@ jobs:
           "$PY" -m pip install -r engine/requirements.txt pyftpdlib
           cp tests/fake_ps5.py "$S/"
           python engine/make_fake_dump.py "$S/fakedump/PPSA00001-app"
-          echo "PACKER_E2E_SCRATCH=$S" >> "$GITHUB_ENV"
+          echo "PROSPACK_E2E_SCRATCH=$S" >> "$GITHUB_ENV"
           echo "PROSPACK_ENGINE=$(cd src-tauri/binaries && pwd)/$(ls src-tauri/binaries | head -1)" >> "$GITHUB_ENV"
 
       - name: App tests (unit + end-to-end)
